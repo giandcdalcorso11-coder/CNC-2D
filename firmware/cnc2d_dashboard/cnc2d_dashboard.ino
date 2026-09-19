@@ -15,7 +15,9 @@
 #include <Preferences.h>
 #include <ESPmDNS.h>
 
-#define LED_PIN 2
+#define RED_LED_PIN 2
+#define YELLOW_LED_PIN 19
+#define GREEN_LED_PIN 18
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 
 const char* AP_SSID = "CNC-2D-Setup";
@@ -24,7 +26,9 @@ const char* AP_PASS = "cnc2d2026";
 Preferences prefs;
 WebServer server(80);
 
-bool ledState = false;
+bool ledRedState = false;
+bool ledYellowState = false;
+bool ledGreenState = false;
 bool apMode = false;
 
 const char PAGE_HTML[] PROGMEM = R"rawliteral(
@@ -51,9 +55,14 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   #btn-up{grid-column:2;grid-row:1;}
   #btn-left{grid-column:1;grid-row:2;}
   #btn-center{grid-column:2;grid-row:2;font-weight:bold;}
-  #btn-center.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
+  #btn-center:disabled{opacity:.35;cursor:not-allowed;}
   #btn-right{grid-column:3;grid-row:2;}
   #btn-down{grid-column:2;grid-row:3;}
+  .led-row{display:flex;justify-content:center;gap:8px;margin:16px auto 0;}
+  .led-row button{padding:10px 18px;border-radius:10px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
+  #btn-led-red.on{background:#ef4444;border-color:#ef4444;color:#2a0505;}
+  #btn-led-yellow.on{background:#eab308;border-color:#eab308;color:#2a2205;}
+  #btn-led-green.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
   .status{text-align:center;color:var(--muted);font-size:.9rem;margin-top:8px;}
   form label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
   input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
@@ -75,9 +84,14 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   <div class="pad">
     <button id="btn-up" onclick="arrowPress('up')">&uarr;</button>
     <button id="btn-left" onclick="arrowPress('left')">&larr;</button>
-    <button id="btn-center" onclick="toggleLed()">LED</button>
+    <button id="btn-center" disabled>LED</button>
     <button id="btn-right" onclick="arrowPress('right')">&rarr;</button>
     <button id="btn-down" onclick="arrowPress('down')">&darr;</button>
+  </div>
+  <div class="led-row">
+    <button id="btn-led-red" onclick="toggleLed('red')">Rosso</button>
+    <button id="btn-led-yellow" onclick="toggleLed('yellow')">Giallo</button>
+    <button id="btn-led-green" onclick="toggleLed('green')">Verde</button>
   </div>
   <p class="status" id="led-status">Stato LED: --</p>
 </section>
@@ -117,19 +131,24 @@ function arrowPress(dir){
   console.log('arrow', dir);
 }
 
+function applyLedState(s){
+  $('btn-led-red').classList.toggle('on', s.ledRed);
+  $('btn-led-yellow').classList.toggle('on', s.ledYellow);
+  $('btn-led-green').classList.toggle('on', s.ledGreen);
+  $('led-status').textContent = 'LED — Rosso: ' + (s.ledRed ? 'ACCESO' : 'SPENTO') +
+    ' | Giallo: ' + (s.ledYellow ? 'ACCESO' : 'SPENTO') +
+    ' | Verde: ' + (s.ledGreen ? 'ACCESO' : 'SPENTO');
+}
+
 function refreshState(){
   fetch('/api/state').then(function(r){return r.json();}).then(function(s){
-    $('led-status').textContent = 'Stato LED: ' + (s.led ? 'ACCESO' : 'SPENTO');
-    $('btn-center').classList.toggle('on', s.led);
+    applyLedState(s);
     $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
   }).catch(function(){});
 }
 
-function toggleLed(){
-  fetch('/api/led/toggle').then(function(r){return r.json();}).then(function(s){
-    $('led-status').textContent = 'Stato LED: ' + (s.led ? 'ACCESO' : 'SPENTO');
-    $('btn-center').classList.toggle('on', s.led);
-  });
+function toggleLed(color){
+  fetch('/api/led/' + color + '/toggle').then(function(r){return r.json();}).then(applyLedState);
 }
 
 $('wifi-form').addEventListener('submit', function(e){
@@ -156,7 +175,9 @@ setInterval(refreshState, 4000);
 )rawliteral";
 
 void sendStateJson() {
-  String json = "{\"led\":" + String(ledState ? "true" : "false") +
+  String json = "{\"ledRed\":" + String(ledRedState ? "true" : "false") +
+                ",\"ledYellow\":" + String(ledYellowState ? "true" : "false") +
+                ",\"ledGreen\":" + String(ledGreenState ? "true" : "false") +
                 ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
                 ",\"ssid\":\"" + (apMode ? String(AP_SSID) : WiFi.SSID()) + "\"" +
                 ",\"ip\":\"" + (apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString()) + "\"}";
@@ -167,9 +188,21 @@ void handleRoot() {
   server.send_P(200, "text/html", PAGE_HTML);
 }
 
-void handleLedToggle() {
-  ledState = !ledState;
-  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+void handleLedRedToggle() {
+  ledRedState = !ledRedState;
+  digitalWrite(RED_LED_PIN, ledRedState ? HIGH : LOW);
+  sendStateJson();
+}
+
+void handleLedYellowToggle() {
+  ledYellowState = !ledYellowState;
+  digitalWrite(YELLOW_LED_PIN, ledYellowState ? HIGH : LOW);
+  sendStateJson();
+}
+
+void handleLedGreenToggle() {
+  ledGreenState = !ledGreenState;
+  digitalWrite(GREEN_LED_PIN, ledGreenState ? HIGH : LOW);
   sendStateJson();
 }
 
@@ -213,8 +246,12 @@ void startSetupAP() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(YELLOW_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(YELLOW_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
 
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
@@ -237,7 +274,9 @@ void setup() {
   }
 
   server.on("/", HTTP_GET, handleRoot);
-  server.on("/api/led/toggle", HTTP_GET, handleLedToggle);
+  server.on("/api/led/red/toggle", HTTP_GET, handleLedRedToggle);
+  server.on("/api/led/yellow/toggle", HTTP_GET, handleLedYellowToggle);
+  server.on("/api/led/green/toggle", HTTP_GET, handleLedGreenToggle);
   server.on("/api/state", HTTP_GET, handleState);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
   server.onNotFound(handleNotFound);
