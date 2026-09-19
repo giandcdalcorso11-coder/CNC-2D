@@ -224,18 +224,21 @@ void handleRoot() {
 void handleLedRedToggle() {
   ledRedState = !ledRedState;
   digitalWrite(RED_LED_PIN, ledRedState ? HIGH : LOW);
+  logMsg(String("LED rosso: ") + (ledRedState ? "ACCESO" : "SPENTO"));
   sendStateJson();
 }
 
 void handleLedYellowToggle() {
   ledYellowState = !ledYellowState;
   digitalWrite(YELLOW_LED_PIN, ledYellowState ? HIGH : LOW);
+  logMsg(String("LED giallo: ") + (ledYellowState ? "ACCESO" : "SPENTO"));
   sendStateJson();
 }
 
 void handleLedGreenToggle() {
   ledGreenState = !ledGreenState;
   digitalWrite(GREEN_LED_PIN, ledGreenState ? HIGH : LOW);
+  logMsg(String("LED verde: ") + (ledGreenState ? "ACCESO" : "SPENTO"));
   sendStateJson();
 }
 
