@@ -22,7 +22,14 @@
 #define RED_LED_PIN 2
 #define YELLOW_LED_PIN 19
 #define GREEN_LED_PIN 18
+#define STEP_PIN 4
+#define DIR_PIN 16
+#define ENABLE_PIN 17
 #define WIFI_CONNECT_TIMEOUT_MS 15000
+#define STEPS_PER_REV 200
+
+const unsigned long STEP_PULSE_US = 5;
+const unsigned long STEP_INTERVAL_US = 4000;
 
 const char* AP_SSID = "CNC-2D-Setup";
 const char* AP_PASS = "cnc2d2026";
@@ -34,6 +41,17 @@ bool ledRedState = false;
 bool ledYellowState = false;
 bool ledGreenState = false;
 bool apMode = false;
+
+bool motorRunning = false;
+int motorDir = 1; // 1 = destra, -1 = sinistra
+unsigned long lastStepMicros = 0;
+
+void doStep(int dir) {
+  digitalWrite(DIR_PIN, dir > 0 ? HIGH : LOW);
+  digitalWrite(STEP_PIN, HIGH);
+  delayMicroseconds(STEP_PULSE_US);
+  digitalWrite(STEP_PIN, LOW);
+}
 
 String logBuffer = "";
 const size_t LOG_MAX_LEN = 4000;
@@ -74,8 +92,8 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   #btn-center:disabled{opacity:.35;cursor:not-allowed;}
   #btn-right{grid-column:3;grid-row:2;}
   #btn-down{grid-column:2;grid-row:3;}
-  .led-row{display:flex;justify-content:center;gap:8px;margin:16px auto 0;}
-  .led-row button{padding:10px 18px;border-radius:10px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
+  .led-row,.motor-row{display:flex;justify-content:center;gap:8px;margin:16px auto 0;}
+  .led-row button,.motor-row button{padding:10px 18px;border-radius:10px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
   #btn-led-red.on{background:#ef4444;border-color:#ef4444;color:#2a0505;}
   #btn-led-yellow.on{background:#eab308;border-color:#eab308;color:#2a2205;}
   #btn-led-green.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
@@ -101,15 +119,23 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 <section id="controllo" class="tab-content active">
   <div class="pad">
     <button id="btn-up" onclick="arrowPress('up')">&uarr;</button>
-    <button id="btn-left" onclick="arrowPress('left')">&larr;</button>
+    <button id="btn-left"
+      onmousedown="pressStart('left')" onmouseup="pressEnd('left')" onmouseleave="pressEnd('left')"
+      ontouchstart="pressStart('left')" ontouchend="pressEnd('left')">&larr;</button>
     <button id="btn-center" disabled>LED</button>
-    <button id="btn-right" onclick="arrowPress('right')">&rarr;</button>
+    <button id="btn-right"
+      onmousedown="pressStart('right')" onmouseup="pressEnd('right')" onmouseleave="pressEnd('right')"
+      ontouchstart="pressStart('right')" ontouchend="pressEnd('right')">&rarr;</button>
     <button id="btn-down" onclick="arrowPress('down')">&darr;</button>
   </div>
   <div class="led-row">
     <button id="btn-led-red" onclick="toggleLed('red')">Rosso</button>
     <button id="btn-led-yellow" onclick="toggleLed('yellow')">Giallo</button>
     <button id="btn-led-green" onclick="toggleLed('green')">Verde</button>
+  </div>
+  <div class="motor-row">
+    <button onclick="fullTurn('left')">Giro completo &larr;</button>
+    <button onclick="fullTurn('right')">Giro completo &rarr;</button>
   </div>
   <p class="status" id="led-status">Stato LED: --</p>
 </section>
@@ -149,8 +175,32 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 });
 
 function arrowPress(dir){
-  // Placeholder: nessuna azione finché i motori non sono collegati.
+  // Placeholder: su/giù non ancora collegati (nessun asse Y/Z pronto).
   console.log('arrow', dir);
+}
+
+var holdTimer = null;
+var isHolding = false;
+
+function pressStart(dir){
+  isHolding = false;
+  fetch('/api/motor/step?dir=' + dir);
+  holdTimer = setTimeout(function(){
+    isHolding = true;
+    fetch('/api/motor/start?dir=' + dir);
+  }, 300);
+}
+
+function pressEnd(dir){
+  clearTimeout(holdTimer);
+  if (isHolding) {
+    fetch('/api/motor/stop');
+    isHolding = false;
+  }
+}
+
+function fullTurn(dir){
+  fetch('/api/motor/full?dir=' + dir);
 }
 
 function applyLedState(s){
@@ -250,6 +300,35 @@ void handleLog() {
   server.send(200, "text/plain", logBuffer);
 }
 
+void handleMotorStep() {
+  int d = (server.arg("dir") == "right") ? 1 : -1;
+  doStep(d);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorStart() {
+  motorDir = (server.arg("dir") == "right") ? 1 : -1;
+  motorRunning = true;
+  logMsg(String("Motore: avvio continuo verso ") + (motorDir > 0 ? "destra" : "sinistra"));
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorStop() {
+  motorRunning = false;
+  logMsg("Motore: stop");
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorFull() {
+  int d = (server.arg("dir") == "right") ? 1 : -1;
+  logMsg(String("Motore: giro completo verso ") + (d > 0 ? "destra" : "sinistra"));
+  for (int i = 0; i < STEPS_PER_REV; i++) {
+    doStep(d);
+    delayMicroseconds(STEP_INTERVAL_US);
+  }
+  server.send(200, "text/plain", "ok");
+}
+
 void handleWifiSave() {
   String ssid = server.arg("ssid");
   String password = server.arg("password");
@@ -308,6 +387,13 @@ void setup() {
   digitalWrite(YELLOW_LED_PIN, LOW);
   digitalWrite(GREEN_LED_PIN, LOW);
 
+  pinMode(STEP_PIN, OUTPUT);
+  pinMode(DIR_PIN, OUTPUT);
+  pinMode(ENABLE_PIN, OUTPUT);
+  digitalWrite(STEP_PIN, LOW);
+  digitalWrite(DIR_PIN, LOW);
+  digitalWrite(ENABLE_PIN, LOW); // LOW = driver abilitato
+
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
   String savedPass = prefs.getString("pass", "");
@@ -329,6 +415,10 @@ void setup() {
   server.on("/api/led/green/toggle", HTTP_GET, handleLedGreenToggle);
   server.on("/api/state", HTTP_GET, handleState);
   server.on("/api/log", HTTP_GET, handleLog);
+  server.on("/api/motor/step", HTTP_GET, handleMotorStep);
+  server.on("/api/motor/start", HTTP_GET, handleMotorStart);
+  server.on("/api/motor/stop", HTTP_GET, handleMotorStop);
+  server.on("/api/motor/full", HTTP_GET, handleMotorFull);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
   server.onNotFound(handleNotFound);
   server.begin();
@@ -337,4 +427,12 @@ void setup() {
 void loop() {
   server.handleClient();
   ArduinoOTA.handle();
+
+  if (motorRunning) {
+    unsigned long now = micros();
+    if (now - lastStepMicros >= STEP_INTERVAL_US) {
+      lastStepMicros = now;
+      doStep(motorDir);
+    }
+  }
 }

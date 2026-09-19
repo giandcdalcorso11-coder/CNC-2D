@@ -9,6 +9,7 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 - LED rosso + resistenza 220 ohm su D2 (GPIO2)
 - LED verde + resistenza 220 ohm su D18 (GPIO18)
 - LED giallo + resistenza 220 ohm su D19 (GPIO19)
+- Driver A4988 con motore X: STEP su D4, DIR su D16, ENABLE su D17 (GPIO4/16/17)
 
 ## Librerie
 
@@ -44,14 +45,23 @@ sulla stessa rete su:
 
 ### Tab Controllo
 
-Frecce su/giù/sx/dx: presenti ma non collegate a nessuna funzione per ora (verranno
-usate per il controllo assi X/Y quando saranno pronti i driver A4988, Step 2).
+Frecce sinistra/destra: pilotano il motore X collegato al driver A4988. Un click singolo
+fa avanzare il motore di un singolo passo; tenendo premuto (dopo ~300ms) il motore continua
+a girare finché non si rilascia il pulsante. Frecce su/giù: ancora placeholder, riservate
+a un futuro asse Y/Z.
 
-Pulsante centrale del joystick: disabilitato per ora, riservato al futuro controllo motori.
+Pulsante centrale del joystick: disabilitato per ora, riservato a un futuro uso.
+
+Pulsanti "Giro completo ←/→": fanno compiere al motore un giro completo (200 passi,
+corrispondenti a 1,8°/passo in modalità full-step) nella direzione indicata.
 
 Pulsanti Rosso/Giallo/Verde: accendono/spengono rispettivamente i LED su D2, D19, D18,
 per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere indicatori
 di stato distinti quando inizieremo a pilotare i motori.
+
+Nota sulla direzione: se sinistra/destra risultano invertite rispetto a quanto ti aspetti,
+non serve toccare i cavi — è sufficiente scambiare la mappatura HIGH/LOW di `DIR_PIN` nel
+codice (`doStep()`).
 
 ## Aggiornamenti firmware via Wi-Fi (OTA)
 
