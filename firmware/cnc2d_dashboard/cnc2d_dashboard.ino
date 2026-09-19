@@ -29,7 +29,7 @@
 #define STEPS_PER_REV 200
 
 const unsigned long STEP_PULSE_US = 5;
-const unsigned long STEP_INTERVAL_US = 4000;
+const unsigned long STEP_INTERVAL_US = 15000; // test diagnostico: partenza molto lenta per escludere lo stallo
 
 const char* AP_SSID = "CNC-2D-Setup";
 const char* AP_PASS = "cnc2d2026";
