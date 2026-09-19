@@ -6,11 +6,13 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 ## Hardware richiesto
 
 - ESP32 alimentato via USB o batteria+interruttore (come da bring-up già completato)
-- LED + resistenza 220 ohm su D2 (GPIO2)
+- LED rosso + resistenza 220 ohm su D2 (GPIO2)
+- LED verde + resistenza 220 ohm su D18 (GPIO18)
+- LED giallo + resistenza 220 ohm su D19 (GPIO19)
 
 ## Librerie
 
-Nessuna installazione extra: `WiFi.h`, `WebServer.h`, `Preferences.h`, `ESPmDNS.h` sono
+Nessuna installazione extra: `WiFi.h`, `WebServer.h`, `Preferences.h`, `ArduinoOTA.h` sono
 incluse nel core ESP32 per Arduino (Boards Manager → "esp32" di Espressif).
 
 ## Primo upload
@@ -45,8 +47,23 @@ sulla stessa rete su:
 Frecce su/giù/sx/dx: presenti ma non collegate a nessuna funzione per ora (verranno
 usate per il controllo assi X/Y quando saranno pronti i driver A4988, Step 2).
 
-Pulsante centrale: accende/spegne il LED su D2, per verificare che la dashboard comunichi
-correttamente con l'ESP32.
+Pulsante centrale del joystick: disabilitato per ora, riservato al futuro controllo motori.
+
+Pulsanti Rosso/Giallo/Verde: accendono/spengono rispettivamente i LED su D2, D19, D18,
+per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere indicatori
+di stato distinti quando inizieremo a pilotare i motori.
+
+## Aggiornamenti firmware via Wi-Fi (OTA)
+
+Dopo il primo caricamento via USB, i successivi aggiornamenti del firmware possono essere
+fatti via Wi-Fi, senza cavo: una volta che l'ESP32 è connesso alla rete di casa, in Arduino
+IDE vai su Strumenti → Porta e seleziona la voce di rete (tipo "cnc2d at 192.168.x.x").
+Premi Upload come al solito: ti verrà chiesta la password OTA, che è la stessa
+dell'Access Point di emergenza (`cnc2d2026`).
+
+Nota: l'OTA funziona solo quando l'ESP32 è già connesso alla rete di casa (modalità STA).
+Se è in modalità `CNC-2D-Setup` (nessuna rete configurata o credenziali errate), serve
+ancora il cavo USB per il primo caricamento.
 
 ### Tab Wi-Fi
 

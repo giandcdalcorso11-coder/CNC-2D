@@ -1,7 +1,7 @@
-// CNC-2D — Dashboard web ESP32 (Step 1: LED su D2 + configurazione Wi-Fi via web)
+// CNC-2D — Dashboard web ESP32 (Step 1: LED su D2/D18/D19 + configurazione Wi-Fi via web)
 //
 // Librerie usate: tutte incluse nel core ESP32 per Arduino (nessuna installazione extra):
-// WiFi.h, WebServer.h, Preferences.h, ESPmDNS.h
+// WiFi.h, WebServer.h, Preferences.h, ArduinoOTA.h
 //
 // Comportamento al boot:
 // - Se sono salvate credenziali Wi-Fi valide, si connette alla rete di casa (modalità STA)
@@ -9,11 +9,15 @@
 // - Se non ci sono credenziali salvate, o la connessione fallisce, apre un Access Point
 //   di emergenza (SSID/PASS sotto) su cui è comunque raggiungibile la stessa pagina,
 //   per poter impostare/correggere le credenziali dalla tab Wi-Fi.
+//
+// Una volta connesso alla rete di casa, i successivi aggiornamenti firmware possono
+// essere caricati via Wi-Fi (OTA) da Arduino IDE selezionando la porta di rete "cnc2d",
+// senza bisogno del cavo USB. Password OTA: la stessa dell'Access Point di emergenza.
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
-#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 
 #define RED_LED_PIN 2
 #define YELLOW_LED_PIN 19
@@ -244,6 +248,21 @@ void startSetupAP() {
   WiFi.softAP(AP_SSID, AP_PASS);
 }
 
+void setupOTA() {
+  ArduinoOTA.setHostname("cnc2d");
+  ArduinoOTA.setPassword(AP_PASS);
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA: aggiornamento avviato...");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("OTA: completato, riavvio.");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA errore [%u]\n", error);
+  });
+  ArduinoOTA.begin();
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(RED_LED_PIN, OUTPUT);
@@ -261,9 +280,8 @@ void setup() {
     apMode = false;
     Serial.print("Connesso. IP: ");
     Serial.println(WiFi.localIP());
-    if (MDNS.begin("cnc2d")) {
-      Serial.println("mDNS attivo: http://cnc2d.local");
-    }
+    setupOTA();
+    Serial.println("mDNS/OTA attivi: http://cnc2d.local");
   } else {
     Serial.println("Connessione Wi-Fi fallita o non configurata. Avvio modalita' configurazione.");
     startSetupAP();
@@ -285,4 +303,5 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  ArduinoOTA.handle();
 }
