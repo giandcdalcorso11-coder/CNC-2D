@@ -65,6 +65,14 @@ Nota: l'OTA funziona solo quando l'ESP32 è già connesso alla rete di casa (mod
 Se è in modalità `CNC-2D-Setup` (nessuna rete configurata o credenziali errate), serve
 ancora il cavo USB per il primo caricamento.
 
+### Tab Log
+
+Mostra in tempo reale (aggiornamento ogni 2 secondi) gli stessi messaggi che finora
+si vedevano solo sul Serial Monitor via USB — utile soprattutto dopo il primo aggiornamento
+OTA, quando il Serial Monitor di Arduino IDE non è più disponibile perché la connessione
+è via Wi-Fi e non via cavo. Il log tiene in memoria solo le ultime righe (circa 4000
+caratteri): non è un log persistente, si azzera a ogni riavvio dell'ESP32.
+
 ### Tab Wi-Fi
 
 Permette di cambiare SSID/password in qualsiasi momento, senza dover ricollegare l'ESP32

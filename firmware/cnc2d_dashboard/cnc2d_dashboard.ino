@@ -35,6 +35,18 @@ bool ledYellowState = false;
 bool ledGreenState = false;
 bool apMode = false;
 
+String logBuffer = "";
+const size_t LOG_MAX_LEN = 4000;
+
+void logMsg(const String& msg) {
+  Serial.println(msg);
+  logBuffer += msg;
+  logBuffer += "\n";
+  if (logBuffer.length() > LOG_MAX_LEN) {
+    logBuffer = logBuffer.substring(logBuffer.length() - LOG_MAX_LEN);
+  }
+}
+
 const char PAGE_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="it">
@@ -74,6 +86,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   .info{background:var(--panel);border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;}
   .msg{margin-top:12px;font-size:.9rem;text-align:center;}
   .placeholder{color:var(--muted);text-align:center;padding:32px 0;}
+  .log-view{background:#0e0e11;border:1px solid #333;border-radius:8px;padding:10px;height:300px;overflow-y:auto;font-family:monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;margin:0;}
 </style>
 </head>
 <body>
@@ -81,6 +94,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 <div class="tabs">
   <button class="tab-btn active" data-tab="controllo">Controllo</button>
   <button class="tab-btn" data-tab="wifi">Wi-Fi</button>
+  <button class="tab-btn" data-tab="log">Log</button>
   <button class="tab-btn" data-tab="codice">Codice</button>
 </div>
 
@@ -110,6 +124,10 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <button type="submit" class="primary">Salva e riavvia</button>
   </form>
   <p class="msg" id="wifi-msg"></p>
+</section>
+
+<section id="log" class="tab-content">
+  <pre id="log-view" class="log-view"></pre>
 </section>
 
 <section id="codice" class="tab-content">
@@ -155,6 +173,15 @@ function toggleLed(color){
   fetch('/api/led/' + color + '/toggle').then(function(r){return r.json();}).then(applyLedState);
 }
 
+function refreshLog(){
+  fetch('/api/log').then(function(r){return r.text();}).then(function(t){
+    var el = $('log-view');
+    var atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 20);
+    el.textContent = t;
+    if (atBottom) el.scrollTop = el.scrollHeight;
+  }).catch(function(){});
+}
+
 $('wifi-form').addEventListener('submit', function(e){
   e.preventDefault();
   var ssid = $('ssid').value;
@@ -173,6 +200,8 @@ $('wifi-form').addEventListener('submit', function(e){
 
 refreshState();
 setInterval(refreshState, 4000);
+refreshLog();
+setInterval(refreshLog, 2000);
 </script>
 </body>
 </html>
@@ -214,6 +243,10 @@ void handleState() {
   sendStateJson();
 }
 
+void handleLog() {
+  server.send(200, "text/plain", logBuffer);
+}
+
 void handleWifiSave() {
   String ssid = server.arg("ssid");
   String password = server.arg("password");
@@ -252,13 +285,13 @@ void setupOTA() {
   ArduinoOTA.setHostname("cnc2d");
   ArduinoOTA.setPassword(AP_PASS);
   ArduinoOTA.onStart([]() {
-    Serial.println("OTA: aggiornamento avviato...");
+    logMsg("OTA: aggiornamento avviato...");
   });
   ArduinoOTA.onEnd([]() {
-    Serial.println("OTA: completato, riavvio.");
+    logMsg("OTA: completato, riavvio.");
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("OTA errore [%u]\n", error);
+    logMsg("OTA errore [" + String((int)error) + "]");
   });
   ArduinoOTA.begin();
 }
@@ -278,17 +311,13 @@ void setup() {
 
   if (savedSsid.length() > 0 && connectToWifi(savedSsid, savedPass)) {
     apMode = false;
-    Serial.print("Connesso. IP: ");
-    Serial.println(WiFi.localIP());
+    logMsg("Connesso. IP: " + WiFi.localIP().toString());
     setupOTA();
-    Serial.println("mDNS/OTA attivi: http://cnc2d.local");
+    logMsg("mDNS/OTA attivi: http://cnc2d.local");
   } else {
-    Serial.println("Connessione Wi-Fi fallita o non configurata. Avvio modalita' configurazione.");
+    logMsg("Connessione Wi-Fi fallita o non configurata. Avvio modalita' configurazione.");
     startSetupAP();
-    Serial.print("Connettiti alla rete '");
-    Serial.print(AP_SSID);
-    Serial.print("' e apri http://");
-    Serial.println(WiFi.softAPIP());
+    logMsg("Connettiti alla rete '" + String(AP_SSID) + "' e apri http://" + WiFi.softAPIP().toString());
   }
 
   server.on("/", HTTP_GET, handleRoot);
@@ -296,6 +325,7 @@ void setup() {
   server.on("/api/led/yellow/toggle", HTTP_GET, handleLedYellowToggle);
   server.on("/api/led/green/toggle", HTTP_GET, handleLedGreenToggle);
   server.on("/api/state", HTTP_GET, handleState);
+  server.on("/api/log", HTTP_GET, handleLog);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
   server.onNotFound(handleNotFound);
   server.begin();
