@@ -215,6 +215,24 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   <p class="hint">Togliendo la spunta il motore si sblocca e smette di scaldare. Se il motore resta
     bloccato anche con la spunta tolta, il pin ENABLE non sta arrivando al driver.</p>
 
+  <div class="field">
+    <label>Test pin &mdash; forza un livello fisso e misuralo col multimetro sul pin del driver</label>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('step',0)">STEP 0 V</button>
+      <button class="ghost" onclick="setPin('step',1)">STEP 3,3 V</button>
+    </div>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('dir',0)">DIR 0 V</button>
+      <button class="ghost" onclick="setPin('dir',1)">DIR 3,3 V</button>
+    </div>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('en',0)">EN 0 V</button>
+      <button class="ghost" onclick="setPin('en',1)">EN 3,3 V</button>
+    </div>
+    <p class="hint">Puntale nero su un GND, puntale rosso sul pin del driver. Se il valore letto
+      non segue il pulsante, il segnale non arriva dal ESP32 al driver.</p>
+  </div>
+
   <button class="primary" onclick="runTest('right')">Esegui verso &rarr;</button>
   <button class="primary" onclick="runTest('left')" style="margin-top:8px">Esegui verso &larr;</button>
   <button class="primary" onclick="motorStop()" style="margin-top:8px;background:#ef4444">STOP</button>
@@ -299,6 +317,10 @@ function pushEnable(){
 function runTest(dir){
   pushConfig();
   fetch('/api/motor/run?dir=' + dir + '&steps=' + $('step-count').value);
+}
+
+function setPin(pin, level){
+  fetch('/api/pin/set?pin=' + pin + '&level=' + level);
 }
 
 function motorStop(){
@@ -479,6 +501,28 @@ void handleMotorEnable() {
   server.send(200, "text/plain", "ok");
 }
 
+// Forza un singolo pin a un livello fisso, per poterlo misurare col multimetro
+// direttamente sul pin del driver. Qualsiasi movimento in corso viene fermato.
+void handlePinSet() {
+  String pin = server.arg("pin");
+  bool high = (server.arg("level") == "1");
+  stepsRemaining = 0;
+
+  if (pin == "step") {
+    digitalWrite(STEP_PIN, high ? HIGH : LOW);
+  } else if (pin == "dir") {
+    digitalWrite(DIR_PIN, high ? HIGH : LOW);
+  } else if (pin == "en") {
+    setDriverEnabled(!high); // ENABLE attivo basso: livello alto = driver disabilitato
+  } else {
+    server.send(400, "text/plain", "pin sconosciuto");
+    return;
+  }
+
+  logMsg("Test pin: " + pin + " forzato a " + (high ? "3.3 V (alto)" : "0 V (basso)"));
+  server.send(200, "text/plain", "ok");
+}
+
 void handleWifiSave() {
   String ssid = server.arg("ssid");
   String password = server.arg("password");
@@ -573,6 +617,7 @@ void setup() {
   server.on("/api/motor/run", HTTP_GET, handleMotorRun);
   server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
   server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
+  server.on("/api/pin/set", HTTP_GET, handlePinSet);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
   server.onNotFound(handleNotFound);
   server.begin();
