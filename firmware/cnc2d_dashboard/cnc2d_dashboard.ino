@@ -46,6 +46,7 @@ const char* AP_SSID = "CNC-2D-Setup";
 const char* AP_PASS = "cnc2d2026";
 
 Preferences prefs;
+Preferences motorPrefs;
 WebServer server(80);
 
 bool ledRedState = false;
@@ -66,10 +67,11 @@ struct Motor {
   unsigned long lastStepMicros;
   long stepsPerSec;
   long rampSteps;
+  bool invert; // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
 };
 
-Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 1, 0, 67, 40};
-Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 1, 0, 67, 40};
+Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 1, 0, 67, 40, false};
+Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 1, 0, 67, 40, false};
 
 String logBuffer = "";
 const size_t LOG_MAX_LEN = 4000;
@@ -92,7 +94,8 @@ void setDriverEnabled(bool on) {
 // l'A4988 richiede che sia stabile prima del fronte di salita di STEP.
 void setDir(Motor& m, int dir) {
   m.dir = dir;
-  digitalWrite(m.dirPin, dir > 0 ? HIGH : LOW);
+  bool high = (dir > 0) != m.invert;
+  digitalWrite(m.dirPin, high ? HIGH : LOW);
   delayMicroseconds(DIR_SETUP_US);
 }
 
@@ -271,6 +274,11 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
       <div class="slider-label"><span>Passi</span></div>
       <input type="number" id="steps-x" min="1" max="20000" value="200">
 
+      <div class="check" style="margin-top:12px">
+        <input type="checkbox" id="inv-x" onchange="pushInvert('x')">
+        <label for="inv-x" style="margin:0;font-size:.8rem">Inverti direzione</label>
+      </div>
+
       <div class="axis-run">
         <button onclick="runAxis('x','left')">&larr;</button>
         <button onclick="runAxis('x','right')">&rarr;</button>
@@ -292,6 +300,11 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 
       <div class="slider-label"><span>Passi</span></div>
       <input type="number" id="steps-y" min="1" max="20000" value="200">
+
+      <div class="check" style="margin-top:12px">
+        <input type="checkbox" id="inv-y" onchange="pushInvert('y')">
+        <label for="inv-y" style="margin:0;font-size:.8rem">Inverti direzione</label>
+      </div>
 
       <div class="axis-run">
         <button onclick="runAxis('y','down')">&darr;</button>
@@ -406,6 +419,10 @@ function pushAxis(a){
   fetch('/api/motor/config?axis=' + a + '&sps=' + $('sps-' + a).value + '&ramp=' + $('ramp-' + a).value);
 }
 
+function pushInvert(a){
+  fetch('/api/motor/invert?axis=' + a + '&on=' + ($('inv-' + a).checked ? 1 : 0));
+}
+
 function pushEnable(){
   fetch('/api/motor/enable?on=' + ($('drv-enabled').checked ? 1 : 0));
 }
@@ -438,6 +455,7 @@ function applyAxis(a, s){
     $('ramp-' + a).value = s.ramp;
     showRamp(a);
   }
+  $('inv-' + a).checked = s.invert;
 }
 
 function applyState(s){
@@ -505,7 +523,8 @@ String axisJson(const Motor& m) {
   return "{\"remaining\":" + String(m.stepsRemaining) +
          ",\"done\":" + String(m.stepsDone) +
          ",\"sps\":" + String(m.stepsPerSec) +
-         ",\"ramp\":" + String(m.rampSteps) + "}";
+         ",\"ramp\":" + String(m.rampSteps) +
+         ",\"invert\":" + String(m.invert ? "true" : "false") + "}";
 }
 
 void sendStateJson() {
@@ -626,6 +645,15 @@ void handleMotorConfig() {
   server.send(200, "text/plain", "ok");
 }
 
+void handleMotorInvert() {
+  Motor& m = (server.arg("axis") == "y") ? motorY : motorX;
+  m.invert = (server.arg("on") == "1");
+  m.stepsRemaining = 0; // il verso non va cambiato a movimento in corso
+  motorPrefs.putBool(m.name[0] == 'Y' ? "invY" : "invX", m.invert);
+  logMsg("Motore " + String(m.name) + ": direzione " + (m.invert ? "invertita" : "normale"));
+  server.send(200, "text/plain", "ok");
+}
+
 void handleMotorEnable() {
   bool on = (server.arg("on") == "1");
   setDriverEnabled(on);
@@ -733,6 +761,10 @@ void setup() {
   pinMode(ENABLE_PIN, OUTPUT);
   setDriverEnabled(true);
 
+  motorPrefs.begin("motor_cfg", false);
+  motorX.invert = motorPrefs.getBool("invX", false);
+  motorY.invert = motorPrefs.getBool("invY", false);
+
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
   String savedPass = prefs.getString("pass", "");
@@ -760,6 +792,7 @@ void setup() {
   server.on("/api/motor/full", HTTP_GET, handleMotorFull);
   server.on("/api/motor/run", HTTP_GET, handleMotorRun);
   server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
+  server.on("/api/motor/invert", HTTP_GET, handleMotorInvert);
   server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
   server.on("/api/pin/set", HTTP_GET, handlePinSet);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);

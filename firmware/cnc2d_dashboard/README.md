@@ -66,7 +66,7 @@ per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere 
 di stato distinti quando inizieremo a pilotare i motori.
 
 Nota sulla direzione: se un asse risulta invertito rispetto a quanto ti aspetti, non serve
-toccare i cavi — è sufficiente scambiare la mappatura HIGH/LOW in `setDir()`.
+toccare i cavi né il codice — usa la spunta "Inverti direzione" nella tab Motore.
 
 ### Tab Motore (diagnostica)
 
@@ -80,6 +80,10 @@ diverse una volta montata la meccanica, quindi vogliono regolazioni indipendenti
   ad essa. A 0 la partenza è secca — utile per verificare fino a dove il motore aggancia
   da fermo, ma un motore fermo che non aggancia la frequenza di partenza si limita a vibrare.
 - **Passi**: quanti passi eseguire col pulsante di quella colonna.
+- **Inverti direzione**: ribalta il verso di quell'asse. Serve quando, montata la meccanica,
+  un asse si muove al contrario rispetto alla freccia premuta: si risolve con una spunta
+  invece di riaprire il cablaggio. L'impostazione è salvata in memoria non volatile e
+  sopravvive ai riavvii.
 - **Esegui i due assi insieme**: fa partire entrambi contemporaneamente, ciascuno con i
   propri parametri. Serve anche a verificare che l'alimentatore regga il consumo dei due
   motori in movimento.
