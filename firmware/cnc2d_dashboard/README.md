@@ -57,34 +57,37 @@ il motore continua a girare finché non si rilascia il pulsante.
 
 Pulsante centrale del joystick: disabilitato per ora, riservato a un futuro uso.
 
-Pulsanti "giro": fanno compiere all'asse indicato un giro completo (200 passi,
-corrispondenti a 1,8°/passo in modalità full-step) nella direzione scelta. Il pulsante
-STOP ferma entrambi gli assi.
+Pulsanti `360°`: disposti attorno alle frecce, ciascuno fa compiere un giro completo
+(200 passi, cioè 1,8°/passo in full-step) all'asse e nel verso della freccia che affianca.
+Il pulsante STOP ferma entrambi gli assi.
 
 Pulsanti Rosso/Giallo/Verde: accendono/spengono rispettivamente i LED su D2, D19, D18,
 per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere indicatori
 di stato distinti quando inizieremo a pilotare i motori.
 
-Nota sulla direzione: se sinistra/destra risultano invertite rispetto a quanto ti aspetti,
-non serve toccare i cavi — è sufficiente scambiare la mappatura HIGH/LOW di `DIR_PIN` nel
-codice (`setDir()`).
+Nota sulla direzione: se un asse risulta invertito rispetto a quanto ti aspetti, non serve
+toccare i cavi — è sufficiente scambiare la mappatura HIGH/LOW in `setDir()`.
 
 ### Tab Motore (diagnostica)
 
-Permette di variare i parametri di movimento senza ricompilare, per capire dove si rompe:
+Divisa in due colonne, una per asse, ciascuna con i propri parametri — X e Y avranno masse
+diverse una volta montata la meccanica, quindi vogliono regolazioni indipendenti.
 
-- **Intervallo tra i passi**: da 300 µs (veloce) a 200000 µs (lentissimo). Se il motore gira
-  a 50 ms/passo ma stalla a 8 ms/passo, il limite è la coppia disponibile (quindi corrente,
-  Vref, tensione di alimentazione) e non il cablaggio.
-- **Numero di passi**: 200 passi = un giro completo in full-step.
-- **Rampa di accelerazione**: i primi 40 passi partono 4 volte più lenti del valore impostato
-  e accelerano linearmente. Senza rampa un motore fermo può non riuscire ad agganciarsi
-  alla frequenza di partenza e si limita a vibrare.
-- **Asse**: X, Y o entrambi insieme. "Entrambi" serve anche a verificare che
-  l'alimentatore regga il consumo dei due motori in movimento contemporaneo.
+- **Velocità** (10–400 passi/s): 200 passi = un giro. Il limite superiore è volutamente
+  conservativo: il motore è stato validato fino a 500 passi/s, qui ci si ferma a 400.
+- **Accelerazione** (0–200 passi): su quanti passi si distribuisce la partenza. Il primo
+  passo parte 4 volte più lento della velocità impostata e si accelera linearmente fino
+  ad essa. A 0 la partenza è secca — utile per verificare fino a dove il motore aggancia
+  da fermo, ma un motore fermo che non aggancia la frequenza di partenza si limita a vibrare.
+- **Passi**: quanti passi eseguire col pulsante di quella colonna.
+- **Esegui i due assi insieme**: fa partire entrambi contemporaneamente, ciascuno con i
+  propri parametri. Serve anche a verificare che l'alimentatore regga il consumo dei due
+  motori in movimento.
 - **Driver abilitati**: agisce direttamente sul pin ENABLE condiviso. Serve anche come verifica:
-  togliendo la spunta il motore deve sbloccarsi (si gira a mano liberamente). Se resta
-  bloccato, il segnale ENABLE non sta arrivando al driver.
+  togliendo la spunta i motori devono sbloccarsi (si girano a mano liberamente). Se restano
+  bloccati, il segnale ENABLE non sta arrivando ai driver.
+- **Test pin** (sezione richiudibile): forza STEP/DIR/EN a un livello fisso per misurarli
+  col multimetro sul pin del driver.
 
 Ogni comando viene registrato nella tab Log, con il conteggio dei passi effettivamente
 emessi a fine movimento: se il log dice "200 passi emessi" ma l'albero non ha fatto un giro,
