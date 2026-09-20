@@ -9,7 +9,7 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 - LED rosso + resistenza 220 ohm su D2 (GPIO2)
 - LED verde + resistenza 220 ohm su D18 (GPIO18)
 - LED giallo + resistenza 220 ohm su D19 (GPIO19)
-- Driver A4988 con motore X: STEP su D4, DIR su D16, ENABLE su D17 (GPIO4/16/17)
+- Driver A4988 con motore X: STEP su D4, DIR su D26, ENABLE su D27 (GPIO4/26/27)
 
 ## Librerie
 

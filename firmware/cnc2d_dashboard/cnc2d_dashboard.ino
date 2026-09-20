@@ -23,8 +23,8 @@
 #define YELLOW_LED_PIN 19
 #define GREEN_LED_PIN 18
 #define STEP_PIN 4
-#define DIR_PIN 16
-#define ENABLE_PIN 17
+#define DIR_PIN 26
+#define ENABLE_PIN 27
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 #define STEPS_PER_REV 200
 
