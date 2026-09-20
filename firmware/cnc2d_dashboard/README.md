@@ -10,6 +10,9 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 - LED verde + resistenza 220 ohm su D18 (GPIO18)
 - LED giallo + resistenza 220 ohm su D19 (GPIO19)
 - Driver A4988 con motore X: STEP su D4, DIR su D26, ENABLE su D27 (GPIO4/26/27)
+- **Condensatore elettrolitico da 100 µF / 35 V (minimo 47 µF) tra VMOT e GND del driver**,
+  il più vicino possibile al modulo. Non è opzionale: senza di esso i picchi induttivi
+  generati dalle bobine a ogni commutazione possono distruggere l'A4988.
 
 ## Librerie
 
@@ -61,7 +64,41 @@ di stato distinti quando inizieremo a pilotare i motori.
 
 Nota sulla direzione: se sinistra/destra risultano invertite rispetto a quanto ti aspetti,
 non serve toccare i cavi — è sufficiente scambiare la mappatura HIGH/LOW di `DIR_PIN` nel
-codice (`doStep()`).
+codice (`setDir()`).
+
+### Tab Motore (diagnostica)
+
+Permette di variare i parametri di movimento senza ricompilare, per capire dove si rompe:
+
+- **Intervallo tra i passi**: da 300 µs (veloce) a 200000 µs (lentissimo). Se il motore gira
+  a 50 ms/passo ma stalla a 8 ms/passo, il limite è la coppia disponibile (quindi corrente,
+  Vref, tensione di alimentazione) e non il cablaggio.
+- **Numero di passi**: 200 passi = un giro completo in full-step.
+- **Rampa di accelerazione**: i primi 40 passi partono 4 volte più lenti del valore impostato
+  e accelerano linearmente. Senza rampa un motore fermo può non riuscire ad agganciarsi
+  alla frequenza di partenza e si limita a vibrare.
+- **Driver abilitato**: agisce direttamente sul pin ENABLE. Serve anche come verifica:
+  togliendo la spunta il motore deve sbloccarsi (si gira a mano liberamente). Se resta
+  bloccato, il segnale ENABLE non sta arrivando al driver.
+
+Ogni comando viene registrato nella tab Log, con il conteggio dei passi effettivamente
+emessi a fine movimento: se il log dice "200 passi emessi" ma l'albero non ha fatto un giro,
+il problema è meccanico/elettrico a valle del driver, non nel firmware.
+
+### Calcolo del Vref (importante)
+
+La corrente per fase impostata dal trimmer dipende dalle resistenze di shunt montate sul
+modulo, che variano tra produttori:
+
+    Vref = corrente_per_fase × 8 × R_shunt
+
+I valori sono stampati sui due piccoli componenti SMD vicini al bordo del modulo:
+`R050` = 0,05 Ω, `R068` = 0,068 Ω (Pololu), `R100` = 0,1 Ω, `R200` = 0,2 Ω.
+
+Per un motore da 0,7 A/fase: 0,38 V con R068, 0,56 V con R100, **1,12 V con R200**.
+Usare il valore sbagliato significa alimentare il motore a metà (o al doppio) della
+corrente prevista — nel primo caso il motore fa singoli passi ma stalla appena si prova
+a farlo girare in modo continuo.
 
 ## Aggiornamenti firmware via Wi-Fi (OTA)
 

@@ -1,4 +1,4 @@
-// CNC-2D — Dashboard web ESP32 (Step 1: LED su D2/D18/D19 + configurazione Wi-Fi via web)
+// CNC-2D — Dashboard web ESP32 (Step 1-2: LED, Wi-Fi via web, OTA, log, controllo motore X)
 //
 // Librerie usate: tutte incluse nel core ESP32 per Arduino (nessuna installazione extra):
 // WiFi.h, WebServer.h, Preferences.h, ArduinoOTA.h
@@ -28,8 +28,11 @@
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 #define STEPS_PER_REV 200
 
-const unsigned long STEP_PULSE_US = 5;
-const unsigned long STEP_INTERVAL_US = 15000; // test diagnostico: partenza molto lenta per escludere lo stallo
+const unsigned long STEP_PULSE_US = 10;
+const unsigned long DIR_SETUP_US = 20;
+const unsigned long STEP_INTERVAL_MIN_US = 300;
+const unsigned long STEP_INTERVAL_MAX_US = 200000;
+const long RAMP_LEN = 40; // passi su cui si distribuisce la rampa di accelerazione
 
 const char* AP_SSID = "CNC-2D-Setup";
 const char* AP_PASS = "cnc2d2026";
@@ -42,16 +45,14 @@ bool ledYellowState = false;
 bool ledGreenState = false;
 bool apMode = false;
 
-bool motorRunning = false;
+// Stato motore. stepsRemaining: 0 = fermo, >0 = passi da fare, -1 = rotazione continua.
+long stepsRemaining = 0;
+long stepsDone = 0;
 int motorDir = 1; // 1 = destra, -1 = sinistra
+unsigned long stepIntervalUs = 15000;
 unsigned long lastStepMicros = 0;
-
-void doStep(int dir) {
-  digitalWrite(DIR_PIN, dir > 0 ? HIGH : LOW);
-  digitalWrite(STEP_PIN, HIGH);
-  delayMicroseconds(STEP_PULSE_US);
-  digitalWrite(STEP_PIN, LOW);
-}
+bool rampEnabled = true;
+bool driverEnabled = true;
 
 String logBuffer = "";
 const size_t LOG_MAX_LEN = 4000;
@@ -63,6 +64,39 @@ void logMsg(const String& msg) {
   if (logBuffer.length() > LOG_MAX_LEN) {
     logBuffer = logBuffer.substring(logBuffer.length() - LOG_MAX_LEN);
   }
+}
+
+void setDriverEnabled(bool on) {
+  driverEnabled = on;
+  digitalWrite(ENABLE_PIN, on ? LOW : HIGH); // A4988: ENABLE attivo basso
+}
+
+// DIR va impostato una sola volta a inizio movimento, non ad ogni passo:
+// l'A4988 richiede che sia stabile prima del fronte di salita di STEP.
+void setDir(int dir) {
+  motorDir = dir;
+  digitalWrite(DIR_PIN, dir > 0 ? HIGH : LOW);
+  delayMicroseconds(DIR_SETUP_US);
+}
+
+void pulseStep() {
+  digitalWrite(STEP_PIN, HIGH);
+  delayMicroseconds(STEP_PULSE_US);
+  digitalWrite(STEP_PIN, LOW);
+}
+
+// Intervallo del passo corrente: con la rampa attiva i primi RAMP_LEN passi
+// partono 4 volte più lenti del target e accelerano linearmente fino ad esso.
+unsigned long currentIntervalUs() {
+  if (!rampEnabled || stepsDone >= RAMP_LEN) return stepIntervalUs;
+  return stepIntervalUs * (RAMP_LEN + 3 * (RAMP_LEN - stepsDone)) / RAMP_LEN;
+}
+
+void startMove(int dir, long steps) {
+  setDir(dir);
+  stepsDone = 0;
+  stepsRemaining = steps;
+  lastStepMicros = micros();
 }
 
 const char PAGE_HTML[] PROGMEM = R"rawliteral(
@@ -78,7 +112,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);}
   header{padding:16px;text-align:center;border-bottom:1px solid #222;}
   h1{margin:0;font-size:1.2rem;}
-  .tabs{display:flex;justify-content:center;gap:8px;padding:12px;}
+  .tabs{display:flex;justify-content:center;gap:8px;padding:12px;flex-wrap:wrap;}
   .tab-btn{background:var(--panel);border:1px solid #333;color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;}
   .tab-btn.active{background:var(--accent);border-color:var(--accent);}
   .tab-content{display:none;max-width:420px;margin:0 auto;padding:16px;}
@@ -98,19 +132,24 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   #btn-led-yellow.on{background:#eab308;border-color:#eab308;color:#2a2205;}
   #btn-led-green.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
   .status{text-align:center;color:var(--muted);font-size:.9rem;margin-top:8px;}
-  form label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
-  input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
+  form label,.field label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
+  input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
   button.primary{margin-top:16px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:1rem;cursor:pointer;}
+  button.ghost{padding:8px 12px;border-radius:8px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;font-size:.85rem;}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .info{background:var(--panel);border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;}
   .msg{margin-top:12px;font-size:.9rem;text-align:center;}
   .placeholder{color:var(--muted);text-align:center;padding:32px 0;}
   .log-view{background:#0e0e11;border:1px solid #333;border-radius:8px;padding:10px;height:300px;overflow-y:auto;font-family:monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;margin:0;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.9rem;color:var(--muted);}
+  .hint{font-size:.8rem;color:var(--muted);margin-top:6px;line-height:1.4;}
 </style>
 </head>
 <body>
 <header><h1>CNC-2D &mdash; Pannello di controllo</h1></header>
 <div class="tabs">
   <button class="tab-btn active" data-tab="controllo">Controllo</button>
+  <button class="tab-btn" data-tab="motore">Motore</button>
   <button class="tab-btn" data-tab="wifi">Wi-Fi</button>
   <button class="tab-btn" data-tab="log">Log</button>
   <button class="tab-btn" data-tab="codice">Codice</button>
@@ -120,12 +159,12 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   <div class="pad">
     <button id="btn-up" onclick="arrowPress('up')">&uarr;</button>
     <button id="btn-left"
-      onmousedown="pressStart('left')" onmouseup="pressEnd('left')" onmouseleave="pressEnd('left')"
-      ontouchstart="pressStart('left')" ontouchend="pressEnd('left')">&larr;</button>
+      onmousedown="pressStart('left')" onmouseup="pressEnd()" onmouseleave="pressEnd()"
+      ontouchstart="pressStart('left')" ontouchend="pressEnd()">&larr;</button>
     <button id="btn-center" disabled>LED</button>
     <button id="btn-right"
-      onmousedown="pressStart('right')" onmouseup="pressEnd('right')" onmouseleave="pressEnd('right')"
-      ontouchstart="pressStart('right')" ontouchend="pressEnd('right')">&rarr;</button>
+      onmousedown="pressStart('right')" onmouseup="pressEnd()" onmouseleave="pressEnd()"
+      ontouchstart="pressStart('right')" ontouchend="pressEnd()">&rarr;</button>
     <button id="btn-down" onclick="arrowPress('down')">&darr;</button>
   </div>
   <div class="led-row">
@@ -138,6 +177,47 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <button onclick="fullTurn('right')">Giro completo &rarr;</button>
   </div>
   <p class="status" id="led-status">Stato LED: --</p>
+  <p class="status" id="motor-status">Motore: --</p>
+</section>
+
+<section id="motore" class="tab-content">
+  <div class="info" id="motor-info">Motore: --</div>
+
+  <div class="field">
+    <label>Intervallo tra i passi (microsecondi)</label>
+    <input type="number" id="step-us" min="300" max="200000" step="100" value="15000">
+    <div class="presets">
+      <button class="ghost" onclick="setUs(50000)">50 ms</button>
+      <button class="ghost" onclick="setUs(25000)">25 ms</button>
+      <button class="ghost" onclick="setUs(15000)">15 ms</button>
+      <button class="ghost" onclick="setUs(8000)">8 ms</button>
+      <button class="ghost" onclick="setUs(4000)">4 ms</button>
+      <button class="ghost" onclick="setUs(2000)">2 ms</button>
+    </div>
+    <p class="hint">Valori alti = motore lento e con pi&ugrave; coppia. Se gira a 50 ms ma non a 8 ms,
+      il problema &egrave; coppia/corrente, non i collegamenti.</p>
+  </div>
+
+  <div class="field">
+    <label>Numero di passi</label>
+    <input type="number" id="step-count" min="1" max="20000" value="200">
+  </div>
+
+  <div class="check">
+    <input type="checkbox" id="ramp" checked onchange="pushConfig()">
+    <label for="ramp" style="margin:0">Rampa di accelerazione (primi 40 passi pi&ugrave; lenti)</label>
+  </div>
+
+  <div class="check">
+    <input type="checkbox" id="drv-enabled" checked onchange="pushEnable()">
+    <label for="drv-enabled" style="margin:0">Driver abilitato (pin ENABLE basso)</label>
+  </div>
+  <p class="hint">Togliendo la spunta il motore si sblocca e smette di scaldare. Se il motore resta
+    bloccato anche con la spunta tolta, il pin ENABLE non sta arrivando al driver.</p>
+
+  <button class="primary" onclick="runTest('right')">Esegui verso &rarr;</button>
+  <button class="primary" onclick="runTest('left')" style="margin-top:8px">Esegui verso &larr;</button>
+  <button class="primary" onclick="motorStop()" style="margin-top:8px;background:#ef4444">STOP</button>
 </section>
 
 <section id="wifi" class="tab-content">
@@ -191,7 +271,7 @@ function pressStart(dir){
   }, 300);
 }
 
-function pressEnd(dir){
+function pressEnd(){
   clearTimeout(holdTimer);
   if (isHolding) {
     fetch('/api/motor/stop');
@@ -203,24 +283,58 @@ function fullTurn(dir){
   fetch('/api/motor/full?dir=' + dir);
 }
 
-function applyLedState(s){
+function setUs(v){
+  $('step-us').value = v;
+  pushConfig();
+}
+
+function pushConfig(){
+  fetch('/api/motor/config?us=' + $('step-us').value + '&ramp=' + ($('ramp').checked ? 1 : 0));
+}
+
+function pushEnable(){
+  fetch('/api/motor/enable?on=' + ($('drv-enabled').checked ? 1 : 0));
+}
+
+function runTest(dir){
+  pushConfig();
+  fetch('/api/motor/run?dir=' + dir + '&steps=' + $('step-count').value);
+}
+
+function motorStop(){
+  fetch('/api/motor/stop');
+}
+
+function applyState(s){
   $('btn-led-red').classList.toggle('on', s.ledRed);
   $('btn-led-yellow').classList.toggle('on', s.ledYellow);
   $('btn-led-green').classList.toggle('on', s.ledGreen);
   $('led-status').textContent = 'LED — Rosso: ' + (s.ledRed ? 'ACCESO' : 'SPENTO') +
     ' | Giallo: ' + (s.ledYellow ? 'ACCESO' : 'SPENTO') +
     ' | Verde: ' + (s.ledGreen ? 'ACCESO' : 'SPENTO');
+
+  var moving = (s.remaining !== 0);
+  var desc = 'Driver: ' + (s.enabled ? 'abilitato' : 'disabilitato') +
+    ' | Intervallo: ' + s.stepUs + ' us' +
+    ' | Rampa: ' + (s.ramp ? 'on' : 'off') +
+    ' | Passi eseguiti: ' + s.done +
+    ' | Mancanti: ' + (s.remaining < 0 ? 'continuo' : s.remaining);
+  $('motor-status').textContent = 'Motore: ' + (moving ? 'in movimento' : 'fermo');
+  $('motor-info').textContent = desc;
+
+  if (document.activeElement !== $('step-us')) $('step-us').value = s.stepUs;
+  $('ramp').checked = s.ramp;
+  $('drv-enabled').checked = s.enabled;
+
+  $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
 }
 
 function refreshState(){
-  fetch('/api/state').then(function(r){return r.json();}).then(function(s){
-    applyLedState(s);
-    $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
-  }).catch(function(){});
+  fetch('/api/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
 }
 
 function toggleLed(color){
-  fetch('/api/led/' + color + '/toggle').then(function(r){return r.json();}).then(applyLedState);
+  fetch('/api/led/' + color + '/toggle').then(function(r){return r.json();}).then(applyState);
 }
 
 function refreshLog(){
@@ -249,9 +363,9 @@ $('wifi-form').addEventListener('submit', function(e){
 });
 
 refreshState();
-setInterval(refreshState, 4000);
+setInterval(refreshState, 2000);
 refreshLog();
-setInterval(refreshLog, 2000);
+setInterval(refreshLog, 3000);
 </script>
 </body>
 </html>
@@ -261,6 +375,11 @@ void sendStateJson() {
   String json = "{\"ledRed\":" + String(ledRedState ? "true" : "false") +
                 ",\"ledYellow\":" + String(ledYellowState ? "true" : "false") +
                 ",\"ledGreen\":" + String(ledGreenState ? "true" : "false") +
+                ",\"enabled\":" + String(driverEnabled ? "true" : "false") +
+                ",\"ramp\":" + String(rampEnabled ? "true" : "false") +
+                ",\"stepUs\":" + String(stepIntervalUs) +
+                ",\"remaining\":" + String(stepsRemaining) +
+                ",\"done\":" + String(stepsDone) +
                 ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
                 ",\"ssid\":\"" + (apMode ? String(AP_SSID) : WiFi.SSID()) + "\"" +
                 ",\"ip\":\"" + (apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString()) + "\"}";
@@ -300,32 +419,63 @@ void handleLog() {
   server.send(200, "text/plain", logBuffer);
 }
 
+int dirFromArg() {
+  return (server.arg("dir") == "right") ? 1 : -1;
+}
+
 void handleMotorStep() {
-  int d = (server.arg("dir") == "right") ? 1 : -1;
-  doStep(d);
+  setDir(dirFromArg());
+  pulseStep();
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorStart() {
-  motorDir = (server.arg("dir") == "right") ? 1 : -1;
-  motorRunning = true;
-  logMsg(String("Motore: avvio continuo verso ") + (motorDir > 0 ? "destra" : "sinistra"));
+  int d = dirFromArg();
+  logMsg(String("Motore: avvio continuo verso ") + (d > 0 ? "destra" : "sinistra") +
+         " a " + String(stepIntervalUs) + " us/passo");
+  startMove(d, -1);
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorStop() {
-  motorRunning = false;
-  logMsg("Motore: stop");
+  stepsRemaining = 0;
+  logMsg("Motore: stop dopo " + String(stepsDone) + " passi");
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorFull() {
-  int d = (server.arg("dir") == "right") ? 1 : -1;
-  logMsg(String("Motore: giro completo verso ") + (d > 0 ? "destra" : "sinistra"));
-  for (int i = 0; i < STEPS_PER_REV; i++) {
-    doStep(d);
-    delayMicroseconds(STEP_INTERVAL_US);
-  }
+  int d = dirFromArg();
+  logMsg(String("Motore: giro completo verso ") + (d > 0 ? "destra" : "sinistra") +
+         " (" + String(STEPS_PER_REV) + " passi a " + String(stepIntervalUs) + " us/passo)");
+  startMove(d, STEPS_PER_REV);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorRun() {
+  int d = dirFromArg();
+  long steps = server.arg("steps").toInt();
+  if (steps < 1) steps = 1;
+  if (steps > 20000) steps = 20000;
+  logMsg("Motore: test " + String(steps) + " passi verso " + (d > 0 ? "destra" : "sinistra") +
+         " a " + String(stepIntervalUs) + " us/passo, rampa " + (rampEnabled ? "on" : "off"));
+  startMove(d, steps);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorConfig() {
+  unsigned long us = (unsigned long)server.arg("us").toInt();
+  if (us < STEP_INTERVAL_MIN_US) us = STEP_INTERVAL_MIN_US;
+  if (us > STEP_INTERVAL_MAX_US) us = STEP_INTERVAL_MAX_US;
+  stepIntervalUs = us;
+  rampEnabled = (server.arg("ramp") == "1");
+  logMsg("Motore: intervallo " + String(stepIntervalUs) + " us, rampa " + (rampEnabled ? "on" : "off"));
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorEnable() {
+  bool on = (server.arg("on") == "1");
+  setDriverEnabled(on);
+  logMsg(String("Driver A4988: ") + (on ? "abilitato (ENABLE basso)" : "disabilitato (ENABLE alto)"));
   server.send(200, "text/plain", "ok");
 }
 
@@ -367,6 +517,7 @@ void setupOTA() {
   ArduinoOTA.setHostname("cnc2d");
   ArduinoOTA.setPassword(AP_PASS);
   ArduinoOTA.onStart([]() {
+    stepsRemaining = 0; // niente passi durante un aggiornamento firmware
     logMsg("OTA: aggiornamento avviato...");
   });
   ArduinoOTA.onEnd([]() {
@@ -392,7 +543,7 @@ void setup() {
   pinMode(ENABLE_PIN, OUTPUT);
   digitalWrite(STEP_PIN, LOW);
   digitalWrite(DIR_PIN, LOW);
-  digitalWrite(ENABLE_PIN, LOW); // LOW = driver abilitato
+  setDriverEnabled(true);
 
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
@@ -419,20 +570,37 @@ void setup() {
   server.on("/api/motor/start", HTTP_GET, handleMotorStart);
   server.on("/api/motor/stop", HTTP_GET, handleMotorStop);
   server.on("/api/motor/full", HTTP_GET, handleMotorFull);
+  server.on("/api/motor/run", HTTP_GET, handleMotorRun);
+  server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
+  server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
   server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
   server.onNotFound(handleNotFound);
   server.begin();
 }
 
-void loop() {
-  server.handleClient();
-  ArduinoOTA.handle();
+void serviceMotor() {
+  if (stepsRemaining == 0 || !driverEnabled) return;
 
-  if (motorRunning) {
-    unsigned long now = micros();
-    if (now - lastStepMicros >= STEP_INTERVAL_US) {
-      lastStepMicros = now;
-      doStep(motorDir);
+  unsigned long now = micros();
+  if (now - lastStepMicros < currentIntervalUs()) return;
+
+  lastStepMicros = now;
+  pulseStep();
+  stepsDone++;
+
+  if (stepsRemaining > 0) {
+    stepsRemaining--;
+    if (stepsRemaining == 0) {
+      logMsg("Motore: movimento completato, " + String(stepsDone) + " passi emessi");
     }
   }
+}
+
+void loop() {
+  // Il movimento ha priorità sul web: server.handleClient() può bloccare anche per
+  // centinaia di millisecondi, quindi i passi vanno emessi prima e dopo, non solo dopo.
+  serviceMotor();
+  server.handleClient();
+  ArduinoOTA.handle();
+  serviceMotor();
 }
