@@ -9,7 +9,10 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 - LED rosso + resistenza 220 ohm su D2 (GPIO2)
 - LED verde + resistenza 220 ohm su D18 (GPIO18)
 - LED giallo + resistenza 220 ohm su D19 (GPIO19)
-- Driver A4988 con motore X: STEP su D4, DIR su D26, ENABLE su D27 (GPIO4/26/27)
+- Driver A4988 motore X: STEP su D4, DIR su D26
+- Driver A4988 motore Y: STEP su D25, DIR su D33
+- ENABLE su D27, condiviso tra i due driver (come sulle schede CNC commerciali: non ha
+  senso tenere un asse energizzato e l'altro no)
 - **Condensatore elettrolitico da 100 µF / 35 V (minimo 47 µF) tra VMOT e GND del driver**,
   il più vicino possibile al modulo. Non è opzionale: senza di esso i picchi induttivi
   generati dalle bobine a ogni commutazione possono distruggere l'A4988.
@@ -48,15 +51,15 @@ sulla stessa rete su:
 
 ### Tab Controllo
 
-Frecce sinistra/destra: pilotano il motore X collegato al driver A4988. Un click singolo
-fa avanzare il motore di un singolo passo; tenendo premuto (dopo ~300ms) il motore continua
-a girare finché non si rilascia il pulsante. Frecce su/giù: ancora placeholder, riservate
-a un futuro asse Y/Z.
+Frecce sinistra/destra: pilotano il motore X. Frecce su/giù: pilotano il motore Y.
+Un click singolo fa avanzare il motore di un singolo passo; tenendo premuto (dopo ~300ms)
+il motore continua a girare finché non si rilascia il pulsante.
 
 Pulsante centrale del joystick: disabilitato per ora, riservato a un futuro uso.
 
-Pulsanti "Giro completo ←/→": fanno compiere al motore un giro completo (200 passi,
-corrispondenti a 1,8°/passo in modalità full-step) nella direzione indicata.
+Pulsanti "giro": fanno compiere all'asse indicato un giro completo (200 passi,
+corrispondenti a 1,8°/passo in modalità full-step) nella direzione scelta. Il pulsante
+STOP ferma entrambi gli assi.
 
 Pulsanti Rosso/Giallo/Verde: accendono/spengono rispettivamente i LED su D2, D19, D18,
 per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere indicatori
@@ -77,7 +80,9 @@ Permette di variare i parametri di movimento senza ricompilare, per capire dove 
 - **Rampa di accelerazione**: i primi 40 passi partono 4 volte più lenti del valore impostato
   e accelerano linearmente. Senza rampa un motore fermo può non riuscire ad agganciarsi
   alla frequenza di partenza e si limita a vibrare.
-- **Driver abilitato**: agisce direttamente sul pin ENABLE. Serve anche come verifica:
+- **Asse**: X, Y o entrambi insieme. "Entrambi" serve anche a verificare che
+  l'alimentatore regga il consumo dei due motori in movimento contemporaneo.
+- **Driver abilitati**: agisce direttamente sul pin ENABLE condiviso. Serve anche come verifica:
   togliendo la spunta il motore deve sbloccarsi (si gira a mano liberamente). Se resta
   bloccato, il segnale ENABLE non sta arrivando al driver.
 
