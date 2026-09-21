@@ -66,6 +66,18 @@ stia dentro, centrato. Nessuna dimensione viene decisa da JavaScript e nessun
 lato si contende lo spazio con l'altro: era la causa del foglio che si
 deformava cambiando una misura.
 
+**Il disegno è in coordinate del foglio, non del piano.** `State.data.art`
+tiene i segmenti rispetto all'angolo in basso a sinistra del foglio; la
+posizione sul piano si somma solo in `rebuildPath`. Così trascinare il foglio
+porta con sé il disegno per costruzione, senza ricalcolarlo, e un SVG caricato
+resta valido anche se poi il foglio viene spostato altrove.
+
+**Il trascinamento usa la matrice del gruppo ribaltato.**
+`flip.getScreenCTM().inverse()` porta dai pixel dello schermo ai millimetri
+della macchina in un colpo solo, ribaltamento dell'asse Y compreso, e resta
+corretta a qualsiasi dimensione della finestra. Rifare quei conti a mano
+significherebbe sbagliarli al primo ridimensionamento.
+
 **L'asse Y è ribaltato.** In SVG la Y cresce verso il basso, sulla macchina
 cresce verso l'alto. Il gruppo `#flip` applica `translate(0,H) scale(1,-1)`
 così le coordinate dentro l'SVG sono quelle della macchina, in millimetri.

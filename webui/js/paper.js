@@ -75,7 +75,7 @@ var Paper = (function () {
     State.data.paper.name = nomeFormato(State.data.paper.w, State.data.paper.h);
     renderBed();
     renderSheet();
-    demoPath();
+    rebuildPath();
     State.emit('paper');
   }
 
@@ -101,22 +101,25 @@ var Paper = (function () {
     }
   }
 
-  /* Percorso di esempio, finché non si carica un disegno vero: un quadrato e
-     un cerchio, gli stessi del collaudo dei motori. Le coordinate sono quelle
-     della macchina, quindi il percorso si sposta col foglio. */
-  function demoPath() {
-    var p = State.data.paper, o = State.data.sheetOrigin;
+  /* ------------------------- il disegno --------------------------- */
+
+  /* Il disegno è tenuto in coordinate relative all'angolo in basso a sinistra
+     del foglio, non del piano. Così spostare il foglio lo porta con sé senza
+     ricalcolare niente, e un SVG caricato resta valido anche se poi il foglio
+     viene trascinato altrove. La posizione sul piano si somma soltanto al
+     momento di disegnare, in rebuildPath. */
+  function demoArt() {
+    var p = State.data.paper;
     var m = Math.min(p.w, p.h) * 0.18;
-    var x0 = o.x + m, y0 = o.y + m, x1 = o.x + p.w - m, y1 = o.y + p.h - m;
+    var x0 = m, y0 = m, x1 = p.w - m, y1 = p.h - m;
     var seg = [];
 
-    seg.push({ x1: 0, y1: 0, x2: x0, y2: y0, draw: false });
     seg.push({ x1: x0, y1: y0, x2: x1, y2: y0, draw: true });
     seg.push({ x1: x1, y1: y0, x2: x1, y2: y1, draw: true });
     seg.push({ x1: x1, y1: y1, x2: x0, y2: y1, draw: true });
     seg.push({ x1: x0, y1: y1, x2: x0, y2: y0, draw: true });
 
-    var cx = o.x + p.w / 2, cy = o.y + p.h / 2, r = Math.min(p.w, p.h) * 0.22;
+    var cx = p.w / 2, cy = p.h / 2, r = Math.min(p.w, p.h) * 0.22;
     var px = cx + r, py = cy, N = 72;
     seg.push({ x1: x0, y1: y0, x2: px, y2: py, draw: false });
     for (var i = 1; i <= N; i++) {
@@ -124,6 +127,27 @@ var Paper = (function () {
       var nx = cx + r * Math.cos(a), ny = cy + r * Math.sin(a);
       seg.push({ x1: px, y1: py, x2: nx, y2: ny, draw: true });
       px = nx; py = ny;
+    }
+    return seg;
+  }
+
+  /* Da coordinate del foglio a coordinate della macchina. */
+  function rebuildPath() {
+    var o = State.data.sheetOrigin;
+    var art = State.data.art || demoArt();
+    var seg = [];
+
+    /* Lo spostamento dallo zero macchina fino al primo tratto: è corsa vera,
+       e deve comparire nell'anteprima come tutto il resto. */
+    if (art.length) {
+      seg.push({ x1: 0, y1: 0, x2: art[0].x1 + o.x, y2: art[0].y1 + o.y, draw: false });
+    }
+    for (var i = 0; i < art.length; i++) {
+      seg.push({
+        x1: art[i].x1 + o.x, y1: art[i].y1 + o.y,
+        x2: art[i].x2 + o.x, y2: art[i].y2 + o.y,
+        draw: art[i].draw
+      });
     }
 
     State.data.path = seg;
@@ -140,6 +164,66 @@ var Paper = (function () {
              '" x2="' + s.x2 + '" y2="' + s.y2 + '"></line>';
     }
     layerTrace.innerHTML = out;
+  }
+
+  /* ---------------------- trascinare il foglio --------------------- */
+
+  /* La matrice del gruppo ribaltato porta dai pixel dello schermo ai
+     millimetri della macchina in un colpo solo, ribaltamento dell'asse Y
+     compreso: non serve rifare i conti a mano, e resta corretta a qualsiasi
+     dimensione della finestra. */
+  function toMm(evt) {
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    return pt.matrixTransform(flip.getScreenCTM().inverse());
+  }
+
+  function enableDrag() {
+    var grab = null;
+
+    layerSheet.addEventListener('pointerdown', function (e) {
+      var rect = e.target.closest('.sheet');
+      if (!rect) return;
+      var m = toMm(e);
+      grab = { dx: m.x - State.data.sheetOrigin.x, dy: m.y - State.data.sheetOrigin.y };
+      rect.classList.add('is-dragging');
+      layerSheet.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    layerSheet.addEventListener('pointermove', function (e) {
+      if (!grab) return;
+      var m = toMm(e);
+      /* Arrotondato al millimetro: su una macchina tarata a mano, una
+         posizione con tre decimali sarebbe una precisione finta. */
+      setSheetOrigin(Math.round(m.x - grab.dx), Math.round(m.y - grab.dy));
+    });
+
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      layerSheet.addEventListener(ev, function (e) {
+        if (!grab) return;
+        grab = null;
+        var r = layerSheet.querySelector('.sheet');
+        if (r) r.classList.remove('is-dragging');
+        layerSheet.releasePointerCapture(e.pointerId);
+      });
+    });
+  }
+
+  function setSheetOrigin(x, y) {
+    State.data.sheetOrigin = { x: x, y: y };
+    document.getElementById('sheet-x').value = x;
+    document.getElementById('sheet-y').value = y;
+    renderSheet();
+    rebuildPath();
+  }
+
+  /* Rimette il foglio al centro dell'area: serve dopo aver cambiato formato,
+     o dopo averlo trascinato fuori. */
+  function centerSheet() {
+    var a = State.data.area, p = State.data.paper;
+    setSheetOrigin(Math.round((a.w - p.w) / 2), Math.round((a.h - p.h) / 2));
   }
 
   function init() {
@@ -166,11 +250,8 @@ var Paper = (function () {
 
     ['sheet-x', 'sheet-y'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', function () {
-        State.data.sheetOrigin = {
-          x: +document.getElementById('sheet-x').value || 0,
-          y: +document.getElementById('sheet-y').value || 0
-        };
-        apply();
+        setSheetOrigin(+document.getElementById('sheet-x').value || 0,
+                       +document.getElementById('sheet-y').value || 0);
       });
     });
 
@@ -185,8 +266,15 @@ var Paper = (function () {
       });
     });
 
+    document.getElementById('btn-center-sheet').addEventListener('click', centerSheet);
+
+    enableDrag();
     apply();
   }
 
-  return { init: init, setSize: setSize, setArea: setArea, renderPath: renderPath };
+  return {
+    init: init, setSize: setSize, setArea: setArea,
+    setSheetOrigin: setSheetOrigin, centerSheet: centerSheet,
+    rebuildPath: rebuildPath
+  };
 })();
