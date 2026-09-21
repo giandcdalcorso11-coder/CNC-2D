@@ -8,6 +8,9 @@ var Settings = (function () {
     var host = document.getElementById('set-host');
     var mock = document.getElementById('set-mock');
 
+    document.getElementById('set-area-w').value = State.data.area.w;
+    document.getElementById('set-area-h').value = State.data.area.h;
+
     host.value = State.data.host;
     mock.checked = State.data.mock;
 

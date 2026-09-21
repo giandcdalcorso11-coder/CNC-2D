@@ -59,6 +59,11 @@
           <label>Altezza (mm) <input type="number" id="paper-h" value="210" min="20" max="400" step="1"></label>
         </div>
         <button class="btn btn-ghost full" id="btn-rotate-paper">Ruota foglio</button>
+        <div class="field-row">
+          <label>Margine X (mm) <input type="number" id="sheet-x" value="20" min="0" step="1"></label>
+          <label>Margine Y (mm) <input type="number" id="sheet-y" value="20" min="0" step="1"></label>
+        </div>
+        <p class="placeholder-note">Distanza dell'angolo in basso a sinistra del foglio dallo zero della macchina.</p>
       </section>
 
       <section class="card">
@@ -136,20 +141,23 @@
     <!-- ---------- centro: il foglio ---------- -->
     <section class="stage">
       <div class="stage-inner">
-        <div class="paper-wrap" id="paper-wrap">
-          <div class="paper" id="paper">
-            <svg id="paper-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 210" preserveAspectRatio="xMidYMid meet">
-              <!-- il gruppo ribalta l'asse Y: in SVG cresce verso il basso, sulla macchina verso l'alto -->
-              <g id="flip" transform="translate(0,210) scale(1,-1)">
-                <g id="layer-art"></g>
-                <g id="layer-trace"></g>
-                <g id="layer-pen">
-                  <circle id="pen-dot" cx="0" cy="0" r="2.2" class="pen-dot"></circle>
-                </g>
+        <div class="bed-wrap">
+          <!-- Il piano della macchina. L'SVG riempie tutto lo spazio e la
+               viewBox lo scala: con preserveAspectRatio il piano ci sta
+               sempre dentro, centrato, senza calcoli di dimensioni. -->
+          <svg id="bed-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet">
+            <!-- il gruppo ribalta l'asse Y: in SVG cresce verso il basso, sulla macchina verso l'alto -->
+            <g id="flip" transform="translate(0,300) scale(1,-1)">
+              <g id="layer-bed"></g>
+              <g id="layer-sheet"></g>
+              <g id="layer-art"></g>
+              <g id="layer-trace"></g>
+              <g id="layer-pen">
+                <circle id="pen-dot" cx="0" cy="0" r="2.6" class="pen-dot"></circle>
               </g>
-            </svg>
-          </div>
-          <div class="paper-caption"><span id="paper-caption">A5 · 148 × 210 mm</span></div>
+            </g>
+          </svg>
+          <div class="stage-caption"><span id="stage-caption">—</span></div>
         </div>
       </div>
     </section>
@@ -203,6 +211,11 @@
 
     <section class="card">
       <h2>Macchina</h2>
+      <div class="field-row">
+        <label>Corsa X (mm) <input type="number" id="set-area-w" value="300" min="50" max="1000" step="1"></label>
+        <label>Corsa Y (mm) <input type="number" id="set-area-h" value="300" min="50" max="1000" step="1"></label>
+      </div>
+      <p class="placeholder-note">Valori provvisori: la corsa vera si misura quando le guide sono montate, e poi si conferma calibrando i due angoli del foglio.</p>
       <div class="field-row">
         <label>Passi/mm X <input type="number" id="set-spmm-x" value="80" step="0.001" disabled></label>
         <label>Passi/mm Y <input type="number" id="set-spmm-y" value="80" step="0.001" disabled></label>

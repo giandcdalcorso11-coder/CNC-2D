@@ -54,6 +54,18 @@ Si disattiva dalla tab Impostazioni.
 
 ## Due dettagli che è facile sbagliare
 
+**L'area di lavoro è fissa, il foglio ci sta dentro.** Il riquadro centrale è
+la corsa degli assi e non cambia quando si cambia formato di carta: il foglio è
+un rettangolo disegnato al suo interno, nella posizione in cui sta davvero sulla
+macchina. Così si vede quanta corsa avanza attorno, che è l'informazione che
+dice se un disegno ci sta o manda il carrello in battuta. Quando il foglio esce
+dall'area, il suo bordo diventa rosso tratteggiato.
+
+L'SVG riempie tutto lo spazio disponibile e la viewBox scala il piano perché ci
+stia dentro, centrato. Nessuna dimensione viene decisa da JavaScript e nessun
+lato si contende lo spazio con l'altro: era la causa del foglio che si
+deformava cambiando una misura.
+
 **L'asse Y è ribaltato.** In SVG la Y cresce verso il basso, sulla macchina
 cresce verso l'alto. Il gruppo `#flip` applica `translate(0,H) scale(1,-1)`
 così le coordinate dentro l'SVG sono quelle della macchina, in millimetri.

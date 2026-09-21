@@ -13,7 +13,11 @@ var State = (function () {
     machine: 'Off',          // Off | Idle | Run | Hold | Alarm
     pos: { x: 0, y: 0, z: 0 },
 
+    /* L'area di lavoro è la corsa degli assi, non il foglio: resta fissa
+       mentre il foglio cambia. Provvisoria finché le guide non esistono. */
+    area: { w: 300, h: 300 },
     paper: { w: 148, h: 210, name: 'A5' },
+    sheetOrigin: { x: 20, y: 20 },   // angolo in basso a sinistra del foglio
 
     art: null,               // il disegno caricato, quando ci sarà
     path: [],                // segmenti del percorso: {x1,y1,x2,y2,draw}

@@ -157,33 +157,46 @@ label.stack { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px
 .step-row { display: flex; align-items: center; gap: 5px; }
 .step-row .btn { flex: 1; }
 
-/* ----------------------------- foglio ----------------------------- */
+/* ------------------------- piano e foglio ------------------------- */
 
-.paper {
-  background: var(--paper);
-  border-radius: 2px;
-  box-shadow: 0 4px 22px #0008, 0 0 0 1px var(--paper-line);
-  /* La proporzione la imposta paper.js. L'altezza arriva dal flex, la
-     larghezza dalla proporzione; se il foglio sfonderebbe di lato, il
-     max-width lo riporta dentro e la proporzione ricalcola l'altezza. */
+/* L'SVG riempie il riquadro e la viewBox fa il resto: il piano ci sta sempre
+   dentro, centrato, qualunque sia la proporzione. Nessuna dimensione decisa
+   da JavaScript, e nessun lato che si contende lo spazio con l'altro. */
+#bed-svg {
   flex: 1 1 auto;
   min-height: 0;
-  max-width: 100%;
+  width: 100%;
 }
-.paper svg { display: block; width: 100%; height: 100%; }
 
-.paper-caption {
+.stage-caption {
   font-size: 12px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
 }
 
 /* Tutte le misure dentro l'SVG sono in millimetri: gli spessori vanno
    espressi in mm, non in pixel, altrimenti cambiano con lo zoom. */
-.trace-draw { fill: none; stroke: var(--ink); stroke-width: .35; stroke-linecap: round; stroke-linejoin: round; }
-.trace-move { fill: none; stroke: #b9b1a2; stroke-width: .2; stroke-dasharray: 1.2 1.2; }
+.bed { fill: #171b22; stroke: #2f3745; stroke-width: .5; }
+
+.grid { stroke: #232a34; stroke-width: .15; }
+.grid-major { stroke: #2d3643; stroke-width: .3; }
+
+.axis { stroke-width: .8; stroke-linecap: round; }
+.axis-x { stroke: #d8664f; }
+.axis-y { stroke: #5fa85f; }
+
+.sheet {
+  fill: var(--paper);
+  stroke: #d8d2c6;
+  stroke-width: .3;
+}
+.sheet-out { stroke: var(--danger); stroke-width: .8; stroke-dasharray: 2 1.5; }
+
+.trace-draw { fill: none; stroke: var(--ink); stroke-width: .4; stroke-linecap: round; stroke-linejoin: round; }
+.trace-move { fill: none; stroke: #9aa3b0; stroke-width: .25; stroke-dasharray: 1.4 1.4; }
 .trace-done { stroke: var(--accent); }
-.pen-dot { fill: #e0523f; stroke: #fff; stroke-width: .35; }
+.pen-dot { fill: #e0523f; stroke: #fff; stroke-width: .4; }
 
 /* --------------------- cursore dell'anteprima --------------------- */
 
