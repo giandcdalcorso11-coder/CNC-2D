@@ -1,0 +1,105 @@
+/* Variabili, reset e tipografia.
+   Nessun font esterno: la pagina sarà servita dall'ESP32, che non ha internet
+   garantito e ha pochi kilobyte di memoria. Si usano i font di sistema. */
+
+:root {
+  --bg:        #12151a;
+  --bg-raised: #191d25;
+  --bg-sunken: #0d1015;
+  --line:      #2a313d;
+  --line-soft: #212832;
+  --text:      #e6eaf0;
+  --text-dim:  #97a1b0;
+  --text-mute: #6b7686;
+
+  --accent:      #4c9aff;
+  --accent-dim:  #2f6fc4;
+  --danger:      #e05252;
+  --warn:        #e0a63a;
+  --ok:          #43b581;
+
+  --paper:      #f7f5f0;
+  --paper-line: #cfc9bd;
+  --ink:        #2b3038;
+
+  --r-sm: 4px;
+  --r-md: 7px;
+  --r-lg: 11px;
+
+  --gap: 14px;
+  --sidebar-w: 268px;
+  --scrub-w: 150px;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; }
+
+h2 {
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+p { margin: 0; }
+
+.muted { color: var(--text-dim); }
+.small { font-size: 12px; }
+.spacer { flex: 1; }
+
+/* Le note che segnalano una parte non ancora costruita: devono distinguersi
+   a colpo d'occhio dal testo normale, per non scambiare un segnaposto per
+   una funzione rotta. */
+.placeholder-note {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-mute);
+  border-left: 2px solid var(--line);
+  padding-left: 8px;
+  font-style: italic;
+}
+
+input, button, select {
+  font: inherit;
+  color: inherit;
+}
+
+input[type="text"],
+input[type="number"] {
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 5px 7px;
+  width: 100%;
+  min-width: 0;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}
+
+input:disabled { opacity: .45; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-sunken); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #38414f; }

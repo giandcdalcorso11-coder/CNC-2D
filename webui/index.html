@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNC-2D</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">CNC<span>-2D</span></div>
+
+  <div class="state-group">
+    <span id="machine-state" class="state-badge state-off">Disconnesso</span>
+    <div class="leds" title="Spie di stato della macchina">
+      <span class="led led-green"  id="led-green"  data-led="0"></span>
+      <span class="led led-yellow" id="led-yellow" data-led="1"></span>
+      <span class="led led-red"    id="led-red"    data-led="2"></span>
+    </div>
+  </div>
+
+  <div class="dro" title="Posizione rispetto all'origine impostata">
+    <div class="dro-axis"><span class="dro-label">X</span><span id="dro-x">0.00</span></div>
+    <div class="dro-axis"><span class="dro-label">Y</span><span id="dro-y">0.00</span></div>
+    <div class="dro-axis"><span class="dro-label">Z</span><span id="dro-z">0.00</span></div>
+  </div>
+
+  <div class="conn">
+    <input type="text" id="host" value="cnc2d.local" spellcheck="false" aria-label="Indirizzo della macchina">
+    <button id="btn-connect" class="btn btn-primary">Connetti</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab is-active" data-tab="disegno" role="tab">Disegno</button>
+  <button class="tab" data-tab="log" role="tab">Log</button>
+  <button class="tab" data-tab="impostazioni" role="tab">Impostazioni</button>
+</nav>
+
+<!-- ============================ DISEGNO ============================ -->
+<main class="panel is-active" id="tab-disegno">
+  <div class="workspace">
+
+    <!-- ---------- colonna sinistra: i controlli ---------- -->
+    <aside class="sidebar">
+
+      <section class="card">
+        <h2>Foglio</h2>
+        <div class="preset-row">
+          <button class="btn btn-ghost preset" data-w="210" data-h="297">A4</button>
+          <button class="btn btn-ghost preset is-active" data-w="148" data-h="210">A5</button>
+          <button class="btn btn-ghost preset" data-w="105" data-h="148">A6</button>
+        </div>
+        <div class="field-row">
+          <label>Larghezza <input type="number" id="paper-w" value="148" min="20" max="400" step="1"> mm</label>
+          <label>Altezza <input type="number" id="paper-h" value="210" min="20" max="400" step="1"> mm</label>
+        </div>
+        <button class="btn btn-ghost full" id="btn-rotate-paper">Ruota foglio</button>
+      </section>
+
+      <section class="card">
+        <h2>Disegno</h2>
+        <div class="dropzone" id="dropzone">
+          <p><strong>Trascina qui un file SVG</strong></p>
+          <p class="muted">oppure clicca per sceglierlo</p>
+          <input type="file" id="file-input" accept=".svg,image/svg+xml" hidden>
+        </div>
+        <div class="file-info" id="file-info" hidden>
+          <span id="file-name">—</span>
+          <button class="btn btn-ghost btn-small" id="btn-clear-file">Rimuovi</button>
+        </div>
+        <div class="field-row">
+          <label>Scala <input type="number" id="art-scale" value="100" min="1" max="400" step="1"> %</label>
+          <label>Rotazione <input type="number" id="art-rot" value="0" min="0" max="270" step="90"> °</label>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-fit" disabled>Adatta al foglio</button>
+          <button class="btn btn-ghost" id="btn-center" disabled>Centra</button>
+        </div>
+        <p class="placeholder-note">La conversione da immagine a tracciato vettoriale non è ancora implementata: per ora si carica un SVG già vettoriale.</p>
+      </section>
+
+      <section class="card">
+        <h2>Origine e area</h2>
+        <p class="muted small">La macchina non ha finecorsa di riferimento: l'origine si imposta a mano, portando la penna nell'angolo in basso a sinistra del foglio.</p>
+        <button class="btn btn-ghost full" id="btn-set-origin" disabled>Imposta origine qui</button>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-corner-bl" disabled>Angolo ↙</button>
+          <button class="btn btn-ghost" id="btn-corner-tr" disabled>Angolo ↗</button>
+        </div>
+        <p class="calib-state" id="calib-state">Area non calibrata</p>
+      </section>
+
+      <section class="card">
+        <h2>Movimento manuale</h2>
+        <div class="jog-pad">
+          <button class="btn btn-jog" data-jog="Y+"  disabled>↑</button>
+          <button class="btn btn-jog" data-jog="X-"  disabled>←</button>
+          <button class="btn btn-jog" data-jog="X+"  disabled>→</button>
+          <button class="btn btn-jog" data-jog="Y-"  disabled>↓</button>
+          <button class="btn btn-jog btn-stop" data-jog="stop" disabled>STOP</button>
+        </div>
+        <div class="step-row" id="jog-steps">
+          <button class="btn btn-ghost btn-small step" data-step="0.1">0,1</button>
+          <button class="btn btn-ghost btn-small step is-active" data-step="1">1</button>
+          <button class="btn btn-ghost btn-small step" data-step="10">10</button>
+          <button class="btn btn-ghost btn-small step" data-step="50">50</button>
+          <span class="muted small">mm</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Penna</h2>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-pen-up" disabled>Alza</button>
+          <button class="btn btn-ghost" id="btn-pen-down" disabled>Abbassa</button>
+        </div>
+        <p class="placeholder-note">Servo non ancora tarato: i comandi restano disattivati finché non sono noti gli estremi dell'impulso.</p>
+      </section>
+
+      <section class="card">
+        <h2>Esecuzione</h2>
+        <button class="btn btn-primary full" id="btn-generate" disabled>Genera G-code</button>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-send" disabled>Invia</button>
+          <button class="btn btn-ghost" id="btn-pause" disabled>Pausa</button>
+        </div>
+        <button class="btn btn-danger full" id="btn-abort" disabled>Interrompi</button>
+      </section>
+
+    </aside>
+
+    <!-- ---------- centro: il foglio ---------- -->
+    <section class="stage">
+      <div class="stage-inner">
+        <div class="paper-wrap" id="paper-wrap">
+          <div class="paper" id="paper">
+            <svg id="paper-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 148 210" preserveAspectRatio="xMidYMid meet">
+              <!-- il gruppo ribalta l'asse Y: in SVG cresce verso il basso, sulla macchina verso l'alto -->
+              <g id="flip" transform="translate(0,210) scale(1,-1)">
+                <g id="layer-art"></g>
+                <g id="layer-trace"></g>
+                <g id="layer-pen">
+                  <circle id="pen-dot" cx="0" cy="0" r="2.2" class="pen-dot"></circle>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <div class="paper-caption"><span id="paper-caption">A5 · 148 × 210 mm</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- colonna destra: anteprima del movimento ---------- -->
+    <aside class="scrubber">
+      <h2>Anteprima</h2>
+      <div class="scrub-track">
+        <input type="range" id="scrub" min="0" max="1000" value="0" step="1" orient="vertical" aria-label="Avanzamento dell'anteprima">
+      </div>
+      <div class="scrub-readout">
+        <span id="scrub-pct">0%</span>
+        <span class="muted small" id="scrub-pos">X 0,0 · Y 0,0</span>
+      </div>
+      <button class="btn btn-ghost btn-small full" id="btn-play">Riproduci</button>
+      <p class="placeholder-note">Trascina il pallino per seguire il percorso della penna. Il tracciato mostrato è di esempio finché non si carica un disegno.</p>
+    </aside>
+
+  </div>
+</main>
+
+<!-- ============================== LOG ============================== -->
+<section class="panel" id="tab-log">
+  <div class="log-toolbar">
+    <label class="chk"><input type="checkbox" id="log-f-cmd" checked> Comandi</label>
+    <label class="chk"><input type="checkbox" id="log-f-msg" checked> Macchina</label>
+    <label class="chk"><input type="checkbox" id="log-f-err" checked> Errori</label>
+    <span class="spacer"></span>
+    <label class="chk"><input type="checkbox" id="log-autoscroll" checked> Scorrimento automatico</label>
+    <button class="btn btn-ghost btn-small" id="btn-log-clear">Svuota</button>
+  </div>
+  <div class="log-view" id="log-view"></div>
+  <form class="log-send" id="log-send">
+    <input type="text" id="log-input" placeholder="Comando da inviare alla macchina…" spellcheck="false" autocomplete="off" disabled>
+    <button class="btn btn-primary" type="submit" disabled id="btn-log-send">Invia</button>
+  </form>
+</section>
+
+<!-- ========================== IMPOSTAZIONI ========================== -->
+<section class="panel" id="tab-impostazioni">
+  <div class="settings-grid">
+
+    <section class="card">
+      <h2>Connessione</h2>
+      <label class="stack">Indirizzo della macchina
+        <input type="text" id="set-host" value="cnc2d.local" spellcheck="false">
+      </label>
+      <label class="chk"><input type="checkbox" id="set-mock" checked> Modalità finta (nessuna macchina collegata)</label>
+      <p class="muted small">Con la modalità finta l'interfaccia funziona da sola, utile per lavorare sul progetto senza accendere la macchina.</p>
+    </section>
+
+    <section class="card">
+      <h2>Macchina</h2>
+      <div class="field-row">
+        <label>Passi/mm X <input type="number" id="set-spmm-x" value="80" step="0.001" disabled></label>
+        <label>Passi/mm Y <input type="number" id="set-spmm-y" value="80" step="0.001" disabled></label>
+      </div>
+      <div class="field-row">
+        <label>Velocità disegno <input type="number" id="set-feed" value="1000" step="50"> mm/min</label>
+        <label>Velocità spostamenti <input type="number" id="set-travel" value="2000" step="50"> mm/min</label>
+      </div>
+      <p class="placeholder-note">I passi/mm vivono nella configurazione di FluidNC: qui saranno in sola lettura, per evitare due verità in disaccordo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Penna</h2>
+      <div class="field-row">
+        <label>Z penna alzata <input type="number" id="set-pen-up" value="0" step="0.1" disabled> mm</label>
+        <label>Z penna abbassata <input type="number" id="set-pen-down" value="-5" step="0.1" disabled> mm</label>
+      </div>
+      <p class="placeholder-note">Da compilare dopo la taratura del servo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Spie</h2>
+      <ul class="legend">
+        <li><span class="led led-green"></span> Macchina pronta o in movimento regolare</li>
+        <li><span class="led led-yellow"></span> Attenzione: origine non impostata, oppure esecuzione in pausa</li>
+        <li><span class="led led-red"></span> Allarme o errore: la macchina è ferma e va sbloccata</li>
+      </ul>
+      <p class="muted small">Le spie sono pilotate sulla macchina con M62/M63 e rispecchiano lo stato mostrato qui in alto.</p>
+    </section>
+
+  </div>
+</section>
+
+<script src="js/state.js"></script>
+<script src="js/api.js"></script>
+<script src="js/logview.js"></script>
+<script src="js/paper.js"></script>
+<script src="js/preview.js"></script>
+<script src="js/jog.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
