@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 5
-**Ultimo aggiornamento:** 2026-09-21 09:15
+**Versione:** 6
+**Ultimo aggiornamento:** 2026-09-21 09:57
 
 ## Vision
 
@@ -113,7 +113,7 @@ Macchina CNC 2D per disegno/plotter, con:
 **Decisioni progettuali:**
 - **FluidNC è il firmware definitivo**, lo sketch `cnc2d_dashboard` retrocede a strumento di collaudo hardware. Motivo: interpolazione coordinata, pianificazione dell'accelerazione fra segmenti e interpretazione del G-code sono settimane di lavoro già risolte e collaudate su migliaia di macchine
 - **Pen-lift come asse Z vero** tramite il tipo motore `rc_servo`, non tramite l'uscita PWM dello spindle con M3/M5. Supera la decisione originale dello Step 3: trattare la penna come un asse permette al generatore di G-code di gestirla come un movimento qualsiasi
-- **Microstepping 1/16** (MS1/MS2/MS3 a VDD su entrambi i driver): a passo intero, con cinghia GT2 e puleggia a 20 denti, si otterrebbero 5 passi/mm, cioè uno scalino ogni 0,2 mm visibile sul tratto. A 1/16 si arriva a 80 passi/mm
+- **Microstepping 1/16** (MS1/MS2/MS3 a VDD su entrambi i driver): a passo intero la risoluzione sarebbe di circa 0,2 mm per passo, uno scalino visibile a occhio sul tratto. A 1/16 si scende attorno ai 0,02 mm. Il valore esatto di `steps_per_mm` dipende dal pignone scelto (vedi Step 5) e va comunque tarato sulla macchina
 - **Nessun azzeramento automatico**: niente finecorsa di riferimento, l'origine si imposta a mano con `G92 X0 Y0`. Conseguenza: `soft_limits` resta disattivo, perché FluidNC lo consente solo su macchina azzerata, e la protezione contro le uscite dall'area passa all'interfaccia web
 - **Driver mai disabilitati** (`idle_ms: 255`): con l'azzeramento manuale, un asse che si ammorbidisce e viene spostato a mano farebbe perdere la posizione senza che nessuno se ne accorga. Annulla l'idea, discussa e poi scartata, di un auto-spegnimento dei driver dopo inattività
 - **Due pulsanti di emergenza** su D13/D14 nell'angolo in basso a sinistra, configurati come finecorsa rigidi: in teoria non vengono premuti mai, se succede FluidNC ferma tutto e va in allarme. Cablati normalmente aperti verso massa — accettabile per un backstop, da rivedere con microswitch veri
@@ -122,7 +122,9 @@ Macchina CNC 2D per disegno/plotter, con:
 **Criterio di completamento:** la macchina disegna un quadrato e un cerchio con movimento coordinato dei due assi, verificabile a vista sui motori anche senza struttura montata
 
 **Note (cronologia dello step):**
-- [2026-09-21] Scritta la configurazione di partenza `firmware/fluidnc/cnc2d-config.yaml` con la mappa dei pin già validata. Restano da tarare `steps_per_mm` (dipende da cinghia e puleggia), `max_travel_mm` (dipende dalla struttura) e gli estremi dell'impulso del servo
+- [2026-09-21] Scritta la configurazione di partenza `firmware/fluidnc/cnc2d-config.yaml` con la mappa dei pin già validata. Restano da tarare `steps_per_mm`, `max_travel_mm` e gli estremi dell'impulso del servo, tutti dipendenti dalla meccanica
+- [2026-09-21] Installazione FluidNC avviata dal web installer (`installer.fluidnc.com`, richiede Chrome o Edge perché usa WebSerial). Scelte: versione **v4.1.0** (ultima non pre-release), processore **esp32** (DevKit WROOM-32 a 30 pin), variante **wifi** (l'unica con WebUI), tipo **fresh-install**, interfaccia **WebUI-2** — scelta fra le tre disponibili perché è quella su cui è costruita la documentazione del wiki, e se ne può installare una sola
+- [2026-09-21] Da verificare alla prima accensione: la configurazione è stata scritta sullo schema FluidNC 3.x, mentre la versione installata è la 4.1.0. Eventuali nomi di campo cambiati vengono segnalati dal validatore all'avvio
 
 ### Step 4 — Interfaccia web e generazione G-code
 
@@ -142,7 +144,67 @@ Macchina CNC 2D per disegno/plotter, con:
 
 **Note (cronologia dello step):** nessuna ancora
 
+### Step 5 — Struttura meccanica
+
+**Stato:** in corso (progettazione)
+
+**Obiettivo:** struttura a portale che porta la penna su tutta l'area di un foglio A5, con i due assi motorizzati e il pen-lift solidale al carrello X
+
+**Decisioni progettuali:**
+- **Trasmissione a cremagliera e pignone**, non a cinghia. Motivo: si stampa in 3D a costo quasi nullo, mentre le cinghie richiedono cinghia, pulegge e tenditori acquistati. Alternativa scartata: cinghia GT2, che avrebbe gioco quasi nullo e motori fissi — resta la via di ripiego se il gioco della cremagliera risultasse ingestibile, e non richiederebbe di rifare la struttura ma solo i supporti dei motori
+- **Motore solidale al carrello**, conseguenza intrinseca della cremagliera: per tenere il motore fermo dovrebbe muoversi la cremagliera, raddoppiando lo spazio necessario. Comporta ~300 g di massa mobile in più sull'asse X, da compensare con velocità moderate
+- **Precarico a molla del pignone contro la cremagliera**: il motore non è fissato rigido ma su una piastrina che oscilla attorno a un perno, tirata verso i denti da una molla. È la contromisura al gioco fra denti stampati, che su un plotter — che inverte direzione a ogni segmento — si tradurrebbe in contorni che non chiudono e tratti sdoppiati
+- **Due vincoli a livelli diversi**: il carrello è catturato dalla guida e non può sollevarsi, il motore resta libero di flottare sul carrello. I due vincoli agiscono su corpi diversi e non si annullano a vicenda
+- **Guide consigliate: barre tonde da 8 mm con cuscinetti LM8UU**, che avvolgono la barra e rendono superflua la copertura di ritegno
+- **Formato massimo A5**, corse utili circa 200 mm su X e 260 mm su Y. Un portale corto riduce anche la tendenza del ponte a mettersi di traverso, essendo spinto da un lato solo
+- **Ponte in alluminio rigido**: un ponte che non flette non può sbandare
+- **Base in pannello di legno**, preferibilmente MDF da 15-18 mm perché resta più piatto del compensato — e la planarità del piano determina se la penna appoggia con la stessa pressione ovunque
+- **Pignone modulo 1**, circa il minimo stampabile in modo affidabile su una FDM; per più risoluzione e coppia si riducono i denti (16 invece di 20) invece del modulo
+- **Cavi mobili da progettare subito**: sette fili fra motore X e servo seguono il carrello per migliaia di cicli, servono catena portacavi o ansa flessibile
+
+**Criterio di completamento:** gioco misurato sotto 0,1 mm e `steps_per_mm` tarato sulla macchina reale
+
+**Note (cronologia dello step):**
+- [2026-09-21] Definito il metodo di taratura in loco, da usare a struttura montata: muovere quasi tutta la corsa (non 100 mm: l'errore di misura è sempre mezzo millimetro, quindi più lunga è la corsa più la taratura è precisa), misurare lo **spostamento del carrello** con un calibro e non la lunghezza della linea disegnata, e partire sempre nello stesso verso per non includere il gioco nella misura. Formula: `nuovi passi/mm = vecchi × comandata / misurata`
+- [2026-09-21] Definita la misura del gioco: comandare +200 mm, poi −200 mm, e misurare di quanto il carrello non è tornato al punto di partenza. Sotto 0,1 mm il precarico funziona, sopra 0,3 mm va ristudiato prima di procedere
+
 ## Storico sessioni
+
+### [2026-09-21 09:57] Progetto della struttura meccanica e installazione di FluidNC
+
+**Riepilogo:** Progettata la meccanica — portale a cremagliera e pignone stampati in 3D su base di legno, formato A5 — e avviata l'installazione di FluidNC sull'ESP32 con le scelte di versione e interfaccia.
+
+**Cosa è stato fatto:**
+
+- Definita l'architettura meccanica completa e aggiunto lo **Step 5** alla pipeline, che finora non prevedeva nessuno step per la struttura fisica
+- Individuato il rischio principale della cremagliera — il gioco fra i denti stampati — e la contromisura: motore su piastrina oscillante con precarico a molla contro la cremagliera
+- Chiarito che il vincolo di ritegno del carrello e la libertà di flottare del motore non sono in conflitto, perché agiscono su corpi diversi
+- Definito il metodo di taratura in loco di `steps_per_mm` e la misura del gioco
+- Avviata l'installazione di FluidNC dal web installer, con le scelte guidate passo per passo
+
+**Decisioni prese:**
+
+- Contesto: come trasmettere il moto ai due assi
+- Decisione: **cremagliera e pignone stampati in 3D**, con precarico a molla del pignone
+- Alternative scartate: cinghia GT2 con motori fissi, che avrebbe gioco quasi nullo e meno massa mobile, ma richiede componenti acquistati. Resta la via di ripiego, sostituibile senza rifare la struttura
+- Da rivedere se: il gioco misurato restasse sopra 0,3 mm anche dopo aver messo a punto il precarico
+- Supera l'assunzione implicita del 2026-09-21 09:15, dove `steps_per_mm` era stato ipotizzato a 80 partendo da una trasmissione a cinghia
+
+- Contesto: il formato massimo di lavoro, che fissa le corse e la luce del portale
+- Decisione: **A5**, con corse di circa 200 × 260 mm
+- Alternative scartate: A4, rimandato — un portale più largo accentua la tendenza del ponte a mettersi di traverso, essendo spinto da un lato solo
+
+- Contesto: quale interfaccia web installare fra WebUI-2, WebUI-3 e FigUI
+- Decisione: **WebUI-2**, perché è quella su cui è costruita la documentazione del wiki e nei prossimi giorni servirà leggerla
+- Alternative scartate: le altre due, non per demerito ma perché se ne può installare una sola e occupano lo stesso spazio; tenerne una lascia anche memoria libera per la pagina che costruiremo
+
+**File consegnati/modificati:**
+
+- `documento-sessione-cnc-2d.md` — aggiornato alla versione 6, aggiunto lo Step 5
+
+**Impatto su Vision/Pipeline:** Aggiunto **Step 5 — Struttura meccanica**, che copre una parte del progetto finora assente dalla pipeline. Aggiornata la nota sul microstepping dello Step 3, che assumeva una trasmissione a cinghia.
+
+---
 
 ### [2026-09-21 09:15] Secondo asse, pen-lift e scelta di FluidNC come firmware definitivo
 
