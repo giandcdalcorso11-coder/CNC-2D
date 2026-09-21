@@ -25,16 +25,6 @@ var Paper = (function () {
     flip.setAttribute('transform', 'translate(0,' + p.h + ') scale(1,-1)');
     elPaper.style.aspectRatio = p.w + ' / ' + p.h;
 
-    /* Il foglio deve stare dentro il riquadro sia in altezza sia in larghezza:
-       si lascia decidere al lato più vincolante. */
-    if (p.w / p.h > 1) {
-      elPaper.style.width = '100%';
-      elPaper.style.height = 'auto';
-    } else {
-      elPaper.style.height = '100%';
-      elPaper.style.width = 'auto';
-    }
-
     caption.textContent = p.name + ' · ' + p.w + ' × ' + p.h + ' mm';
     State.emit('paper');
   }

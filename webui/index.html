@@ -55,8 +55,8 @@
           <button class="btn btn-ghost preset" data-w="105" data-h="148">A6</button>
         </div>
         <div class="field-row">
-          <label>Larghezza <input type="number" id="paper-w" value="148" min="20" max="400" step="1"> mm</label>
-          <label>Altezza <input type="number" id="paper-h" value="210" min="20" max="400" step="1"> mm</label>
+          <label>Larghezza (mm) <input type="number" id="paper-w" value="148" min="20" max="400" step="1"></label>
+          <label>Altezza (mm) <input type="number" id="paper-h" value="210" min="20" max="400" step="1"></label>
         </div>
         <button class="btn btn-ghost full" id="btn-rotate-paper">Ruota foglio</button>
       </section>
@@ -73,8 +73,8 @@
           <button class="btn btn-ghost btn-small" id="btn-clear-file">Rimuovi</button>
         </div>
         <div class="field-row">
-          <label>Scala <input type="number" id="art-scale" value="100" min="1" max="400" step="1"> %</label>
-          <label>Rotazione <input type="number" id="art-rot" value="0" min="0" max="270" step="90"> °</label>
+          <label>Scala (%) <input type="number" id="art-scale" value="100" min="1" max="400" step="1"></label>
+          <label>Rotazione (°) <input type="number" id="art-rot" value="0" min="0" max="270" step="90"></label>
         </div>
         <div class="btn-row">
           <button class="btn btn-ghost" id="btn-fit" disabled>Adatta al foglio</button>
@@ -208,8 +208,8 @@
         <label>Passi/mm Y <input type="number" id="set-spmm-y" value="80" step="0.001" disabled></label>
       </div>
       <div class="field-row">
-        <label>Velocità disegno <input type="number" id="set-feed" value="1000" step="50"> mm/min</label>
-        <label>Velocità spostamenti <input type="number" id="set-travel" value="2000" step="50"> mm/min</label>
+        <label>Velocità disegno (mm/min) <input type="number" id="set-feed" value="1000" step="50"></label>
+        <label>Velocità spostamenti (mm/min) <input type="number" id="set-travel" value="2000" step="50"></label>
       </div>
       <p class="placeholder-note">I passi/mm vivono nella configurazione di FluidNC: qui saranno in sola lettura, per evitare due verità in disaccordo.</p>
     </section>
@@ -217,8 +217,8 @@
     <section class="card">
       <h2>Penna</h2>
       <div class="field-row">
-        <label>Z penna alzata <input type="number" id="set-pen-up" value="0" step="0.1" disabled> mm</label>
-        <label>Z penna abbassata <input type="number" id="set-pen-down" value="-5" step="0.1" disabled> mm</label>
+        <label>Z penna alzata (mm) <input type="number" id="set-pen-up" value="0" step="0.1" disabled></label>
+        <label>Z penna abbassata (mm) <input type="number" id="set-pen-down" value="-5" step="0.1" disabled></label>
       </div>
       <p class="placeholder-note">Da compilare dopo la taratura del servo.</p>
     </section>
