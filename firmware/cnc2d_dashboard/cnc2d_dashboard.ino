@@ -28,6 +28,14 @@
 #define STEP_Y_PIN 25
 #define DIR_Y_PIN 33
 #define ENABLE_PIN 27 // condiviso tra i due driver
+#define SERVO_PIN 32
+
+// Servo standard: 50 Hz, impulso 500-2500 us per 0-180 gradi.
+#define SERVO_FREQ 50
+#define SERVO_RES_BITS 16
+#define SERVO_CHANNEL 4
+const int SERVO_US_MIN = 500;
+const int SERVO_US_MAX = 2500;
 
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 #define STEPS_PER_REV 200
@@ -54,6 +62,13 @@ bool ledYellowState = false;
 bool ledGreenState = false;
 bool apMode = false;
 bool driverEnabled = true;
+
+// Stato penna: "up", "down" o "free" (nessun impulso, servo morbido).
+// All'accensione si parte da "free": un servo che va in battuta contro un
+// vincolo meccanico appena dato corrente assorbe moltissimo.
+int penUpDeg = 90;
+int penDownDeg = 60;
+String penState = "free";
 
 // stepsRemaining: 0 = fermo, >0 = passi ancora da fare, -1 = rotazione continua.
 // rampSteps: numero di passi su cui si distribuisce la rampa di partenza, 0 = partenza secca.
@@ -97,6 +112,35 @@ void setDir(Motor& m, int dir) {
   bool high = (dir > 0) != m.invert;
   digitalWrite(m.dirPin, high ? HIGH : LOW);
   delayMicroseconds(DIR_SETUP_US);
+}
+
+void servoWriteDeg(int deg) {
+  if (deg < 0) deg = 0;
+  if (deg > 180) deg = 180;
+  long us = SERVO_US_MIN + (long)(SERVO_US_MAX - SERVO_US_MIN) * deg / 180;
+  uint32_t duty = (uint32_t)(us * (1UL << SERVO_RES_BITS) / 20000UL);
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(SERVO_PIN, duty);
+#else
+  ledcWrite(SERVO_CHANNEL, duty);
+#endif
+}
+
+// Duty a zero: nessun impulso, il servo smette di tenere la posizione.
+void servoRelease() {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(SERVO_PIN, 0);
+#else
+  ledcWrite(SERVO_CHANNEL, 0);
+#endif
+}
+
+void setPen(const String& state) {
+  if (state == "up") servoWriteDeg(penUpDeg);
+  else if (state == "down") servoWriteDeg(penDownDeg);
+  else servoRelease();
+  penState = state;
+  logMsg("Penna: " + state);
 }
 
 void pulseStep(Motor& m) {
@@ -235,7 +279,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <button id="btn-left"
       onmousedown="pressStart('x','left')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
       ontouchstart="pressStart('x','left')" ontouchend="pressEnd('x')">&larr;</button>
-    <button id="btn-center" disabled>LED</button>
+    <button id="btn-center" onclick="penToggle()" title="Alza/abbassa la penna">PENNA</button>
     <button id="btn-right"
       onmousedown="pressStart('x','right')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
       ontouchstart="pressStart('x','right')" ontouchend="pressEnd('x')">&rarr;</button>
@@ -312,6 +356,28 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
       </div>
       <p class="status" id="stat-y" style="margin-top:8px;font-size:.78rem">--</p>
     </div>
+  </div>
+
+  <div class="axis-card" style="margin-top:12px">
+    <h3>Penna (servo)</h3>
+    <p class="pins">Segnale D32 &middot; alimentazione 5 V separata</p>
+
+    <div class="slider-label"><span>Angolo penna alzata</span><b id="lbl-pen-up">90&deg;</b></div>
+    <input type="range" id="pen-up" min="0" max="180" step="1" value="90"
+           oninput="showPen()" onchange="pushPen('up')">
+
+    <div class="slider-label"><span>Angolo penna abbassata</span><b id="lbl-pen-down">60&deg;</b></div>
+    <input type="range" id="pen-down" min="0" max="180" step="1" value="60"
+           oninput="showPen()" onchange="pushPen('down')">
+
+    <div class="axis-run">
+      <button onclick="penSet('up')">Alza</button>
+      <button onclick="penSet('down')">Abbassa</button>
+      <button onclick="penSet('free')">Rilascia</button>
+    </div>
+    <p class="hint">Rilasciando uno slider il servo si porta subito su quell'angolo, cos&igrave;
+      puoi tarare guardando la penna. "Rilascia" toglie il segnale: il servo si ammorbidisce e
+      smette di scaldare. All'accensione parte rilasciato, non si muove finch&eacute; non glielo chiedi.</p>
   </div>
 
   <p class="hint"><b>Velocit&agrave;</b>: passi al secondo (200 passi = un giro).
@@ -419,6 +485,23 @@ function pushAxis(a){
   fetch('/api/motor/config?axis=' + a + '&sps=' + $('sps-' + a).value + '&ramp=' + $('ramp-' + a).value);
 }
 
+function showPen(){
+  $('lbl-pen-up').textContent = $('pen-up').value + '\u00B0';
+  $('lbl-pen-down').textContent = $('pen-down').value + '\u00B0';
+}
+
+function pushPen(which){
+  fetch('/api/pen/config?up=' + $('pen-up').value + '&down=' + $('pen-down').value + '&preview=' + which);
+}
+
+function penSet(state){
+  fetch('/api/pen/set?state=' + state);
+}
+
+function penToggle(){
+  fetch('/api/pen/set?state=toggle');
+}
+
 function pushInvert(a){
   fetch('/api/motor/invert?axis=' + a + '&on=' + ($('inv-' + a).checked ? 1 : 0));
 }
@@ -472,6 +555,11 @@ function applyState(s){
 
   applyAxis('x', s.x);
   applyAxis('y', s.y);
+
+  if (document.activeElement !== $('pen-up')) $('pen-up').value = s.pen.up;
+  if (document.activeElement !== $('pen-down')) $('pen-down').value = s.pen.down;
+  showPen();
+  $('btn-center').textContent = (s.pen.state === 'down') ? 'GI\u00D9' : 'PENNA';
   $('drv-enabled').checked = s.enabled;
 
   $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
@@ -532,6 +620,9 @@ void sendStateJson() {
                 ",\"ledYellow\":" + String(ledYellowState ? "true" : "false") +
                 ",\"ledGreen\":" + String(ledGreenState ? "true" : "false") +
                 ",\"enabled\":" + String(driverEnabled ? "true" : "false") +
+                ",\"pen\":{\"up\":" + String(penUpDeg) +
+                ",\"down\":" + String(penDownDeg) +
+                ",\"state\":\"" + penState + "\"}" +
                 ",\"x\":" + axisJson(motorX) +
                 ",\"y\":" + axisJson(motorY) +
                 ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
@@ -642,6 +733,33 @@ void handleMotorConfig() {
   m.stepsPerSec = sps;
   m.rampSteps = ramp;
   logMsg("Motore " + String(m.name) + ": " + String(sps) + " passi/s, rampa " + String(ramp) + " passi");
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePenSet() {
+  String st = server.arg("state");
+  if (st == "toggle") st = (penState == "down") ? "up" : "down";
+  if (st != "up" && st != "down" && st != "free") {
+    server.send(400, "text/plain", "stato sconosciuto");
+    return;
+  }
+  setPen(st);
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePenConfig() {
+  int up = server.arg("up").toInt();
+  int down = server.arg("down").toInt();
+  penUpDeg = constrain(up, 0, 180);
+  penDownDeg = constrain(down, 0, 180);
+  motorPrefs.putInt("penUp", penUpDeg);
+  motorPrefs.putInt("penDn", penDownDeg);
+
+  // Portarsi subito sull'angolo appena regolato, per poter tarare a vista.
+  String preview = server.arg("preview");
+  if (preview == "up" || preview == "down") setPen(preview);
+  else logMsg("Penna: alzata " + String(penUpDeg) + " gradi, abbassata " + String(penDownDeg) + " gradi");
+
   server.send(200, "text/plain", "ok");
 }
 
@@ -764,6 +882,16 @@ void setup() {
   motorPrefs.begin("motor_cfg", false);
   motorX.invert = motorPrefs.getBool("invX", false);
   motorY.invert = motorPrefs.getBool("invY", false);
+  penUpDeg = motorPrefs.getInt("penUp", 90);
+  penDownDeg = motorPrefs.getInt("penDn", 60);
+
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcAttach(SERVO_PIN, SERVO_FREQ, SERVO_RES_BITS);
+#else
+  ledcSetup(SERVO_CHANNEL, SERVO_FREQ, SERVO_RES_BITS);
+  ledcAttachPin(SERVO_PIN, SERVO_CHANNEL);
+#endif
+  servoRelease();
 
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
@@ -792,6 +920,8 @@ void setup() {
   server.on("/api/motor/full", HTTP_GET, handleMotorFull);
   server.on("/api/motor/run", HTTP_GET, handleMotorRun);
   server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
+  server.on("/api/pen/set", HTTP_GET, handlePenSet);
+  server.on("/api/pen/config", HTTP_GET, handlePenConfig);
   server.on("/api/motor/invert", HTTP_GET, handleMotorInvert);
   server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
   server.on("/api/pin/set", HTTP_GET, handlePinSet);

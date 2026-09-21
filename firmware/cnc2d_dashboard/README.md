@@ -16,6 +16,10 @@ con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricom
 - **Condensatore elettrolitico da 100 µF / 35 V (minimo 47 µF) tra VMOT e GND del driver**,
   il più vicino possibile al modulo. Non è opzionale: senza di esso i picchi induttivi
   generati dalle bobine a ogni commutazione possono distruggere l'A4988.
+- Servo per il pen-lift: segnale su D32, alimentazione 5 V **separata** dalla logica
+  (un servo assorbe a strappi e può far cadere la tensione all'ESP32), massa in comune,
+  più un condensatore elettrolitico sulla sua alimentazione: 100 µF basta per un SG90,
+  un servo metal-gear da 15 kg ne vuole 470÷1000 µF e un alimentatore dedicato da 2 A.
 
 ## Librerie
 
@@ -55,7 +59,8 @@ Frecce sinistra/destra: pilotano il motore X. Frecce su/giù: pilotano il motore
 Un click singolo fa avanzare il motore di un singolo passo; tenendo premuto (dopo ~300ms)
 il motore continua a girare finché non si rilascia il pulsante.
 
-Pulsante centrale del joystick: disabilitato per ora, riservato a un futuro uso.
+Pulsante centrale del joystick: alza e abbassa la penna. L'etichetta mostra lo stato
+corrente (`PENNA` = alzata o rilasciata, `GIÙ` = appoggiata).
 
 Pulsanti `360°`: disposti attorno alle frecce, ciascuno fa compiere un giro completo
 (200 passi, cioè 1,8°/passo in full-step) all'asse e nel verso della freccia che affianca.
@@ -92,6 +97,14 @@ diverse una volta montata la meccanica, quindi vogliono regolazioni indipendenti
   bloccati, il segnale ENABLE non sta arrivando ai driver.
 - **Test pin** (sezione richiudibile): forza STEP/DIR/EN a un livello fisso per misurarli
   col multimetro sul pin del driver.
+
+La sezione **Penna (servo)** ha due slider per tarare l'angolo di penna alzata e penna
+abbassata: rilasciando uno slider il servo si porta subito su quell'angolo, così si regola
+guardando la penna invece che a tentativi. I due valori sono salvati in memoria non volatile.
+"Rilascia" toglie il segnale PWM e il servo si ammorbidisce, smettendo di consumare e
+scaldare. **All'accensione il servo parte rilasciato** e non si muove finché non glielo si
+chiede: un servo che va in battuta contro un vincolo meccanico appena riceve corrente
+assorbe moltissimo.
 
 Ogni comando viene registrato nella tab Log, con il conteggio dei passi effettivamente
 emessi a fine movimento: se il log dice "200 passi emessi" ma l'albero non ha fatto un giro,
