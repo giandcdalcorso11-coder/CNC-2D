@@ -27,6 +27,11 @@ body = re.search(r'<body>(.*)</body>', html, re.S).group(1)
 css_files = re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)
 js_files = re.findall(r'<script src="([^"]+)"></script>', html)
 
+# Il disegno di esempio serve solo all'anteprima e allo sviluppo: sulla
+# memoria dell'ESP32 sarebbero kilobyte spesi per un logo.
+if not bare:
+    js_files = [f for f in js_files if not f.endswith('sample.js')]
+
 def read(rel):
     return (ROOT / rel).read_text(encoding='utf-8')
 

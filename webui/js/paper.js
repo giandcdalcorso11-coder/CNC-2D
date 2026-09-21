@@ -103,51 +103,45 @@ var Paper = (function () {
 
   /* ------------------------- il disegno --------------------------- */
 
-  /* Il disegno è tenuto in coordinate relative all'angolo in basso a sinistra
-     del foglio, non del piano. Così spostare il foglio lo porta con sé senza
-     ricalcolare niente, e un SVG caricato resta valido anche se poi il foglio
-     viene trascinato altrove. La posizione sul piano si somma soltanto al
-     momento di disegnare, in rebuildPath. */
+  /* Il disegno è tenuto come elenco di polilinee, in coordinate relative
+     all'angolo in basso a sinistra del foglio. Così spostare il foglio lo
+     porta con sé senza ricalcolare niente, e un SVG importato resta valido
+     anche se poi il foglio viene trascinato altrove. La posizione sul piano
+     si somma soltanto al momento di disegnare, in rebuildPath. */
   function demoArt() {
     var p = State.data.paper;
     var m = Math.min(p.w, p.h) * 0.18;
     var x0 = m, y0 = m, x1 = p.w - m, y1 = p.h - m;
-    var seg = [];
 
-    seg.push({ x1: x0, y1: y0, x2: x1, y2: y0, draw: true });
-    seg.push({ x1: x1, y1: y0, x2: x1, y2: y1, draw: true });
-    seg.push({ x1: x1, y1: y1, x2: x0, y2: y1, draw: true });
-    seg.push({ x1: x0, y1: y1, x2: x0, y2: y0, draw: true });
+    var quad = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 },
+                { x: x0, y: y1 }, { x: x0, y: y0 }];
 
-    var cx = p.w / 2, cy = p.h / 2, r = Math.min(p.w, p.h) * 0.22;
-    var px = cx + r, py = cy, N = 72;
-    seg.push({ x1: x0, y1: y0, x2: px, y2: py, draw: false });
-    for (var i = 1; i <= N; i++) {
-      var a = i / N * Math.PI * 2;
-      var nx = cx + r * Math.cos(a), ny = cy + r * Math.sin(a);
-      seg.push({ x1: px, y1: py, x2: nx, y2: ny, draw: true });
-      px = nx; py = ny;
+    var cx = p.w / 2, cy = p.h / 2, r = Math.min(p.w, p.h) * 0.22, cer = [];
+    for (var i = 0; i <= 72; i++) {
+      var a = i / 72 * Math.PI * 2;
+      cer.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
     }
-    return seg;
+    return [quad, cer];
   }
 
-  /* Da coordinate del foglio a coordinate della macchina. */
+  /* Dalle polilinee del foglio ai segmenti in coordinate macchina, con gli
+     spostamenti a penna alzata resi espliciti: sono corsa vera e devono
+     comparire nell'anteprima come tutto il resto. */
   function rebuildPath() {
     var o = State.data.sheetOrigin;
     var art = State.data.art || demoArt();
-    var seg = [];
+    var seg = [], cur = { x: -o.x, y: -o.y };   // lo zero macchina, visto dal foglio
 
-    /* Lo spostamento dallo zero macchina fino al primo tratto: è corsa vera,
-       e deve comparire nell'anteprima come tutto il resto. */
-    if (art.length) {
-      seg.push({ x1: 0, y1: 0, x2: art[0].x1 + o.x, y2: art[0].y1 + o.y, draw: false });
-    }
     for (var i = 0; i < art.length; i++) {
-      seg.push({
-        x1: art[i].x1 + o.x, y1: art[i].y1 + o.y,
-        x2: art[i].x2 + o.x, y2: art[i].y2 + o.y,
-        draw: art[i].draw
-      });
+      var poly = art[i];
+      if (poly.length < 2) continue;
+      seg.push({ x1: cur.x + o.x, y1: cur.y + o.y,
+                 x2: poly[0].x + o.x, y2: poly[0].y + o.y, draw: false });
+      for (var j = 1; j < poly.length; j++) {
+        seg.push({ x1: poly[j - 1].x + o.x, y1: poly[j - 1].y + o.y,
+                   x2: poly[j].x + o.x, y2: poly[j].y + o.y, draw: true });
+      }
+      cur = poly[poly.length - 1];
     }
 
     State.data.path = seg;

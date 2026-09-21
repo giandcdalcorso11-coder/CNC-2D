@@ -4,11 +4,11 @@ L'interfaccia di controllo e preparazione del disegno. Non sostituisce la WebUI
 di FluidNC: la affianca, occupandosi di tutto ciò che sta *prima* del G-code —
 il foglio, il disegno, l'anteprima del percorso — e usando FluidNC per eseguirlo.
 
-Stato attuale: **impalcatura con segnaposto**. La struttura, la navigazione,
-il foglio e l'anteprima del percorso funzionano; il caricamento dell'SVG e la
-generazione del G-code non sono ancora implementati. Le parti non costruite
-sono segnalate nell'interfaccia stessa con una nota in corsivo, per non
-scambiare un segnaposto per una funzione rotta.
+Stato attuale: **funzionante dall'SVG al G-code**. Si importa un file, lo si
+posiziona sul foglio, si preparano il percorso ottimizzato e il G-code con la
+stima del tempo. Manca il collegamento alla macchina e la taratura della penna.
+Le parti non costruite sono segnalate nell'interfaccia stessa con una nota in
+corsivo, per non scambiare un segnaposto per una funzione rotta.
 
 ## Vincoli che hanno determinato la forma del codice
 
@@ -46,7 +46,12 @@ Si disattiva dalla tab Impostazioni.
 | `js/state.js` | stato centrale e notifiche fra moduli |
 | `js/api.js` | comunicazione con FluidNC e modalità finta |
 | `js/logview.js` | la tab Log |
-| `js/paper.js` | foglio, formati, percorso sul foglio |
+| `js/paper.js` | piano, foglio, percorso sul piano |
+| `js/svgimport.js` | lettura dell'SVG, appiattimento delle curve, diradamento |
+| `js/optimize.js` | saldatura, doppioni, ordine e verso, stima del tempo |
+| `js/gcode.js` | generazione del G-code |
+| `js/artwork.js` | il disegno importato e la preparazione della stampa |
+| `js/sample.js` | disegno di esempio (generato, escluso dalla build per l'ESP32) |
 | `js/preview.js` | il cursore verticale che fa scorrere la penna |
 | `js/jog.js` | movimento manuale, origine, penna |
 | `js/settings.js` | la tab Impostazioni |
@@ -88,11 +93,44 @@ si scopre tardi e a foglio rovinato.
 millimetro per via della viewBox: uno `stroke-width: 1` sarebbe un tratto da
 un millimetro, non da un pixel, e cambierebbe aspetto a ogni formato di foglio.
 
+## L'importazione e l'ottimizzazione
+
+**L'appiattimento delle curve lo fa il browser.** Ogni forma vettoriale espone
+`getTotalLength` e `getPointAtLength`: si campiona per lunghezza d'arco e si
+ottengono punti equidistanti lungo la curva, senza riscrivere a mano la
+matematica delle Bézier.
+
+Quel campionamento regala anche il riconoscimento dei sotto-tracciati. Due
+campioni consecutivi non possono distare più del passo scelto, quindi un salto
+più lungo è per forza uno stacco di penna dentro lo stesso elemento — il foro
+di una "o", il contorno interno di una "D". Senza quel controllo comparirebbe
+una riga che attraversa la lettera.
+
+**Il diradamento viene dopo la scalatura**, mai prima: una tolleranza di un
+decimo di millimetro ha senso sul foglio, non nelle unità arbitrarie del file,
+che possono valere un millimetro come un metro.
+
+**Il criterio dell'ottimizzazione è il tempo, non la distanza.** Ogni alzata di
+penna costa circa mezzo secondo fra il movimento del servo e l'assestamento;
+uno spostamento di cinquanta millimetri a 2000 mm/min ne costa uno e mezzo.
+Eliminare un'alzata vale quindi più che accorciare uno spostamento, ed è il
+motivo per cui la saldatura dei tratti contigui viene prima del riordino.
+
+Il riordino è un vicino-più-prossimo con due libertà in più rispetto alla
+versione scolastica: un tratto aperto si può percorrere da entrambi i capi, e
+un contorno chiuso si può cominciare da uno qualsiasi dei suoi punti. La
+seconda conta molto su un logo, fatto quasi solo di contorni chiusi: senza di
+essa la penna raggiungerebbe sempre il punto in cui il disegnatore ha
+cominciato la forma, che non ha relazione con dove si trova adesso.
+
+**Le forme piene diventano contorni.** Una penna non riempie. Il riempimento a
+tratteggio si potrà aggiungere più avanti.
+
 ## Cosa manca
 
-- Lettura dell'SVG e conversione in percorso (`js/paper.js`)
-- Generazione del G-code dal percorso
 - Invio del programma alla macchina e avanzamento in tempo reale
+- Conversione da fotografia a tracciato vettoriale
+- Riempimento a tratteggio delle forme piene
 - Calibrazione dell'area dai due angoli del foglio
 - Comandi della penna, dopo la taratura del servo
 - Caricamento della pagina nella memoria dell'ESP32

@@ -113,17 +113,20 @@
       if (this.files.length) accept(this.files[0]);
     });
 
-    document.getElementById('btn-clear-file').addEventListener('click', function () {
-      document.getElementById('file-info').hidden = true;
-      input.value = '';
-      Log.add('msg', 'Disegno rimosso.');
-    });
-
     function accept(file) {
-      document.getElementById('file-name').textContent = file.name;
-      document.getElementById('file-info').hidden = false;
-      Log.add('msg', 'File ricevuto: ' + file.name +
-        ' — la lettura dell\'SVG e la conversione in percorso non sono ancora implementate.');
+      if (!/\.svg$/i.test(file.name)) {
+        Log.add('err', 'Per ora si accettano solo file SVG.');
+        return;
+      }
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          Artwork.load(r.result, file.name);
+        } catch (e) {
+          Log.add('err', 'Non sono riuscito a leggere il file: ' + e.message);
+        }
+      };
+      r.readAsText(file);
     }
   }
 
@@ -144,6 +147,7 @@
     Preview.init();
     Jog.init();
     Settings.init();
+    Artwork.init();
 
     tabs();
     dropzone();

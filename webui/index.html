@@ -82,11 +82,8 @@
           <label>Scala (%) <input type="number" id="art-scale" value="100" min="1" max="400" step="1"></label>
           <label>Rotazione (°) <input type="number" id="art-rot" value="0" min="0" max="270" step="90"></label>
         </div>
-        <div class="btn-row">
-          <button class="btn btn-ghost" id="btn-fit" disabled>Adatta al foglio</button>
-          <button class="btn btn-ghost" id="btn-center" disabled>Centra</button>
-        </div>
-        <p class="placeholder-note">La conversione da immagine a tracciato vettoriale non è ancora implementata: per ora si carica un SVG già vettoriale.</p>
+        <button class="btn btn-ghost full" id="btn-sample">Carica il disegno di esempio</button>
+        <p class="placeholder-note">La conversione da fotografia a tracciato vettoriale non è ancora implementata: per ora si carica un SVG già vettoriale. Le forme piene vengono disegnate come contorni, perché una penna non riempie.</p>
       </section>
 
       <section class="card">
@@ -129,12 +126,31 @@
 
       <section class="card">
         <h2>Esecuzione</h2>
-        <button class="btn btn-primary full" id="btn-generate" disabled>Genera G-code</button>
-        <div class="btn-row">
-          <button class="btn btn-ghost" id="btn-send" disabled>Invia</button>
-          <button class="btn btn-ghost" id="btn-pause" disabled>Pausa</button>
+        <button class="btn btn-primary full" id="btn-generate">Prepara G-code</button>
+
+        <div id="prep" hidden>
+          <dl class="stats">
+            <div><dt>Tempo stimato</dt><dd id="st-time">—</dd></div>
+            <div><dt>Tratti</dt><dd id="st-paths">—</dd></div>
+            <div><dt>Disegno</dt><dd id="st-draw">—</dd></div>
+            <div><dt>Spostamenti</dt><dd id="st-travel">—</dd></div>
+            <div><dt>Alzate di penna</dt><dd id="st-lifts">—</dd></div>
+          </dl>
+          <p class="gain" id="st-gain"></p>
+          <div class="btn-row">
+            <button class="btn btn-ghost" id="btn-download">Scarica</button>
+            <button class="btn btn-ghost" id="btn-send" disabled>Invia</button>
+          </div>
+          <details class="gcode-box">
+            <summary>Mostra il G-code</summary>
+            <textarea id="gcode-out" readonly spellcheck="false"></textarea>
+          </details>
         </div>
-        <button class="btn btn-danger full" id="btn-abort" disabled>Interrompi</button>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btn-pause" disabled>Pausa</button>
+          <button class="btn btn-danger" id="btn-abort" disabled>Interrompi</button>
+        </div>
       </section>
 
     </aside>
@@ -253,7 +269,12 @@
 <script src="js/state.js"></script>
 <script src="js/api.js"></script>
 <script src="js/logview.js"></script>
+<script src="js/svgimport.js"></script>
+<script src="js/optimize.js"></script>
+<script src="js/gcode.js"></script>
+<script src="js/sample.js"></script>
 <script src="js/paper.js"></script>
+<script src="js/artwork.js"></script>
 <script src="js/preview.js"></script>
 <script src="js/jog.js"></script>
 <script src="js/settings.js"></script>
