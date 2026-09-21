@@ -1,7 +1,13 @@
-# CNC-2D Dashboard — ESP32
+# CNC-2D Dashboard — ESP32 (strumento di collaudo)
 
-Sketch Arduino per lo Step 1 della pipeline: dashboard web servita direttamente dall'ESP32,
-con controllo del LED su D2 e configurazione Wi-Fi da browser (senza dover ricompilare).
+> **Questo non è il firmware definitivo della macchina.** Il firmware finale è FluidNC,
+> vedi `firmware/fluidnc/`. Questo sketch resta come **banco di collaudo dell'hardware**:
+> serve a verificare il cablaggio, provare un driver nuovo, misurare i pin col multimetro
+> e far girare i motori senza G-code. È lo strumento che ha permesso di individuare un
+> driver con l'ingresso STEP in corto, e va tenuto per ogni volta che si tocca il cablaggio.
+
+Dashboard web servita direttamente dall'ESP32, con controllo dei LED, configurazione Wi-Fi
+da browser, log remoto, movimento manuale dei due assi e diagnostica dei pin.
 
 ## Hardware richiesto
 
