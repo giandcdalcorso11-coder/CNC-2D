@@ -89,6 +89,20 @@ Sono cablati normalmente aperti verso massa: se un filo si stacca perdi la prote
 accorgertene. Accettabile per un backstop su questa macchina, da rivedere quando saranno
 microswitch veri.
 
+**L'ENABLE condiviso va scritto senza `:low`.** È la trappola che ci è costata
+un'oretta di diagnosi. Il pin dell'A4988 si chiama ENABLE ed è attivo basso, quindi
+`gpio.27:low` sembra la scrittura giusta — ma il campo di FluidNC si chiama *disable*,
+e sull'A4988 si disabilita portando il pin alto. Quindi è un disable attivo alto, cioè
+senza modificatore. Con `:low` la logica si ribalta e i motori restano spenti proprio
+quando dovrebbero girare.
+
+Il sintomo è insidioso perché tutto il resto sembra funzionare: FluidNC genera gli
+impulsi, le coordinate avanzano normalmente sull'interfaccia, lo stato passa da `Jog`
+a `Idle` — ma i motori non si muovono e gli alberi restano molli. La prova decisiva è
+staccare il filo ENABLE dal lato del driver: l'A4988 ha un pull-down interno su quel
+pin, quindi scollegato si abilita da solo. Se così il motore gira, il problema è la
+polarità in configurazione e non il cablaggio.
+
 **Lo Z è il servo**, non un asse meccanico. Il G-code alza e abbassa la penna con `G0 Z10`
 e `G0 Z0`, che è più pulito del pilotaggio via M3/M5 previsto inizialmente e permette al
 generatore di G-code di trattare il pen-lift come un movimento qualsiasi.

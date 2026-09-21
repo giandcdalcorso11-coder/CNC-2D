@@ -21,8 +21,18 @@ stepping:
   disable_delay_us: 0
 
 axes:
-  # ENABLE condiviso tra i due driver A4988, attivo basso
-  shared_stepper_disable_pin: gpio.27:low
+  # ENABLE condiviso tra i due driver A4988.
+  #
+  # NESSUN ":low" QUI, ed è controintuitivo: il pin dell'A4988 si chiama ENABLE
+  # ed è attivo basso, quindi verrebbe spontaneo scrivere gpio.27:low. Ma il
+  # campo di FluidNC si chiama *disable*: ci viene scritto "vero" quando i
+  # motori vanno spenti. Sull'A4988 si spegne portando il pin ALTO, quindi
+  # visto da FluidNC è un disable attivo alto, cioè senza modificatore.
+  # Con ":low" la logica si ribalta: FluidNC tiene i motori "accesi" portando
+  # il pin alto, che sull'A4988 li spegne. Sintomo: gli impulsi su STEP
+  # vengono generati regolarmente, le coordinate avanzano, ma i motori
+  # restano immobili e gli alberi molli.
+  shared_stepper_disable_pin: gpio.27
 
   x:
     # DA TARARE: 80 vale per cinghia GT2 + puleggia 20 denti + microstep 1/16.
