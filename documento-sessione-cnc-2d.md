@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 8
-**Ultimo aggiornamento:** 2026-09-24 18:44
+**Versione:** 9
+**Ultimo aggiornamento:** 2026-09-25 12:17
 
 ## Vision
 
@@ -170,13 +170,18 @@ Macchina CNC 2D per disegno/plotter, con:
 - **Motore solidale al carrello**, conseguenza intrinseca della cremagliera: per tenere il motore fermo dovrebbe muoversi la cremagliera, raddoppiando lo spazio necessario. Comporta ~300 g di massa mobile in più sull'asse X, da compensare con velocità moderate
 - **Precarico a molla del pignone contro la cremagliera**: il motore non è fissato rigido ma su una piastrina che oscilla attorno a un perno, tirata verso i denti da una molla. È la contromisura al gioco fra denti stampati, che su un plotter — che inverte direzione a ogni segmento — si tradurrebbe in contorni che non chiudono e tratti sdoppiati
 - **Due vincoli a livelli diversi**: il carrello è catturato dalla guida e non può sollevarsi, il motore resta libero di flottare sul carrello. I due vincoli agiscono su corpi diversi e non si annullano a vicenda
-- **Guide in alluminio con cuscinetti radiali 608 che vi rotolano sopra**, non barre tonde con cuscinetti lineari. Le superfici di rotolamento devono essere alluminio: l'anello esterno di un 608 è acciaio temprato e in poche ore scava un solco nella plastica stampata, dopodiché il gioco torna e non si toglie più
-- **Una guida comanda, l'altra sostiene.** La maestra vincola quota verticale, beccheggio, posizione laterale e imbardata; la secondaria vincola solo il rollio e resta libera lateralmente. Due guide montate a mano sul legno non sono mai parallele entro un decimo, e se entrambe vincolassero il laterale quell'errore diventerebbe attrito variabile lungo la corsa — il tipo di errore che non si riesce nemmeno a compensare
+- **Cuscinetti 623ZZ (3 × 10 × 4) che rotolano su guide metalliche**, non cuscinetti lineari su barre tonde. Il diametro è scelto sulla pressione di contatto: a 3 N un Ø10 preme sull'alluminio con 53 MPa contro i 27 di un 608 e gli 86 di un MR62, e l'alluminio cede attorno ai 150. Il foro da 3 mm è M3, **la stessa vite di tutto il resto della macchina** — motore, cremagliera, regolazioni. Le superfici di rotolamento devono essere metallo: l'anello esterno è acciaio temprato e in poche ore scava un solco nella plastica stampata
+- **Ruote impilate a coppie, non sfalsate**, possibile perché due Ø10 stanno in 20 mm. La ruota di sopra e quella di sotto pinzano lo stesso punto del canale, quindi la regolazione è diretta invece che a distanza
+- **Regolazione con asole M3, non con eccentrici.** Un eccentrico da mezzo millimetro di offset copre un millimetro di corsa; il gioco da recuperare può essere di due o tre. L'asola dà tutta la corsa che serve e usa M3 invece di M8
+- **Perni stampati Ø3 per le ruote fisse, viti M3 con tratto liscio per quelle regolabili.** Il conto sul perno stampato dà 5,7 MPa contro i 50 del PLA. Il cuscinetto non deve mai girare sulle creste di un filetto: appoggia su tre punti e balla
+- **Un profilo unico a U al posto di due staffe separate.** Le due pareti di un estruso sono parallele per costruzione, mentre due staffe avvitate a mano divergono di qualche decimo lungo la corsa. Questo toglie alla radice il problema dell'iper-vincolo, e sull'asse X rende superflua la regola della guida maestra qui sotto — che resta però valida sull'asse Y, dove le due guide sono per forza pezzi distinti a distanza di 385 mm
+- **Una guida comanda, l'altra sostiene** (vale sull'asse Y, dove le guide restano due pezzi separati). La maestra vincola quota verticale, beccheggio, posizione laterale e imbardata; la secondaria vincola solo il rollio e resta libera lateralmente. Due guide montate a mano sul legno non sono mai parallele entro un decimo, e se entrambe vincolassero il laterale quell'errore diventerebbe attrito variabile lungo la corsa — il tipo di errore che non si riesce nemmeno a compensare
 - **Un eccentrico per carrello**, sul cuscinetto laterale di contrasto: stampando non si azzecca mai il gioco al primo colpo. Il gioco verticale si regola invece con le asole dei profili superiori, che agiscono su tutta la lunghezza in una volta sola
 - **Motore, pignone con cremagliera e cuscinetti occupano bande laterali distinte.** Il corpo del motore è 42 mm e scende quindi 21 mm sotto l'asse, mentre la cremagliera arriva a 15 mm sotto: si sovrappongono in altezza e devono per forza stare affiancati. Circa 110 mm di larghezza complessiva del carrello. Conseguenza: la flangia di fissaggio della cremagliera va su un lato solo, quello opposto al motore
 - **Formato massimo A5**, corse utili 200 mm su X e 300 mm su Y. Un portale corto riduce anche la tendenza del ponte a mettersi di traverso, essendo spinto da un lato solo
 - **Ponte in alluminio rigido**: un ponte che non flette non può sbandare
-- **Base in pannello di legno**, preferibilmente MDF da 15-18 mm perché resta più piatto del compensato — e la planarità del piano determina se la penna appoggia con la stessa pressione ovunque
+- **Base in compensato da 10 mm, 385 × 455 mm** (acquistata). Rigida e pesante: la massa assorbe le vibrazioni invece di trasmetterle alla penna. Supera l'indicazione precedente dell'MDF da 15-18 mm, scelta prima di sapere cosa si trovasse
+- **Ogni millimetro di lunghezza del carrello è un millimetro di corsa in meno**, mentre la larghezza trasversale non costa corsa. Le due dimensioni vanno quindi trattate in modo diverso: stringere in larghezza quanto si vuole, non accorciare lungo la corsa per guadagnare foglio che non serve
 - **Pignone modulo 1,5 con 20 denti, tutto stampato in PLA+.** Diametro primitivo 30 mm, 33,95 passi/mm, risoluzione 0,029 mm. La risoluzione non è il fattore limitante — l'errore reale della macchina sarà attorno ai 0,2 mm, dieci volte tanto — quindi quel margine conviene spenderlo in robustezza del dente
 - **La compensazione dimensionale sta nello slicer, non nei modelli** (`X-Y contour compensation` a circa −0,10, `hole compensation` a 0). È una proprietà della stampante, non del pezzo: nel modello andrebbe replicata su pignone e cremagliera e si sommerebbe a quella dello slicer
 - **Foro sagomato sull'albero, senza grano, da verificare sul campo.** Il calcolo dà 0,6 MPa contro i circa 50 a cui cede il PLA, quindi la coppia non è un problema; i rischi veri sono lo sfilamento assiale e l'arrotondamento dello spigolo del piatto dopo migliaia di inversioni. Verifica prevista: una riga di pennarello che attraversa pignone e albero, controllata dopo un'ora di movimento
@@ -192,8 +197,60 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-24] Segmenti delle cremagliere fissati: asse X un pezzo da 53 denti (249,76 mm) in diagonale sul piatto, asse Y due pezzi da 37 denti (174,36 mm) dritti. Ogni segmento è un multiplo esatto del passo con il primo dente a mezzo passo dall'estremità, così il passo si mantiene attraverso il giunto
 - [2026-09-24] Fissaggio della cremagliera: **un solo foro tondo al centro dell'intera cremagliera, asole dappertutto altrove**, una ogni 50 mm alternate sui due lati. Il PLA si dilata tre volte più del legno e su 350 mm cresce di oltre tre decimi: bloccato rigidamente in più punti si inarcherebbe, cambiando l'interasse col pignone nel mezzo della corsa
 - [2026-09-24] Geometria del carrello ancora aperta: l'utente ha proposto due staffe a T affacciate avvitate al legno, con il carrello stampato in mezzo. Da chiarire se i cuscinetti appoggiano sull'ala orizzontale o sul gambo verticale. Problema già individuato: le staffe avvitate solo al piede sono mensole che flettono sotto il precarico, che inverte verso a ogni cambio di direzione — rimedio previsto, viti ogni 40-50 mm più un dorso stampato dietro la gamba verticale
+- [2026-09-25] **Materiali acquistati**, e il progetto si adatta a quello che si trova in ferramenta invece del contrario: base in compensato 385 × 455 × 10; viti M3 da 10, 16 e 25 mm **con tratto liscio sotto la testa** (indispensabile per i perni dei cuscinetti); angolare forato 23,5 × 23,5 × 1,5; profilo a U 67,5 × 23,5 × 1,5
+- [2026-09-25] **Il profilo a U più due angolari formano il canale chiuso già progettato**, con misure che coincidono: interno 64,5 × 22 mm, e due ruote Ø10 impilate ne occupano 20, lasciando 2 mm da recuperare con le asole. Gli angolari bullonati sopra le ali, flangia verso l'interno, lasciano una fessura centrale di 20,5 mm per il collo del carrello. Quattro superfici di rotolamento in due pezzi comprati
+- [2026-09-25] **Verifica delle corse sulla base reale**: con un carrello da 90 mm restano circa 325 mm di corsa in Y e 230 in X, contro i 260 × 200 che servono per un A5 con margine. Circa 65 mm di margine in Y — abbastanza da permettersi un carrello fino a 150 mm senza perdere foglio
+- [2026-09-25] Geometria del carrello X definita: il carrello abbraccia **una guida centrale sola**, che va bene perché il profilo è largo 67,5 mm. Sull'asse Y non funzionerà: il ponte è largo 385 mm e su una guida sola si metterebbe di traverso
+- [2026-09-25] Da verificare con una calamita: i profili sono acciaio o alluminio. Un metro di quel profilo pesa 1,35 kg in acciaio contro 465 g in alluminio, e sul ponte mobile dell'asse X quel peso lo muove il motore a ogni riga
 
 ## Storico sessioni
+
+### [2026-09-25 12:17] Materiali acquistati: il progetto si adatta a quello che esiste in ferramenta
+
+**Riepilogo:** scelto il cuscinetto giusto con un calcolo di pressione di contatto (623ZZ, Ø10, foro M3), acquistati i materiali reali, e scoperto che il profilo a U trovato in ferramenta ha esattamente le misure che servono per il canale progettato.
+
+**Cosa è stato fatto:**
+- Calcolata la pressione di contatto per nove misure di cuscinetto, da cui la scelta del 623ZZ
+- Prodotto un modello 3D navigabile del carrello, con guide semitrasparenti per mostrare le ruote dentro il canale
+- Acquistati i materiali: base, viti, angolare forato, profilo a U
+- Verificate le corse ottenibili sulla base reale contro quelle necessarie per un A5
+- Riviste tre proposte successive di carrello dell'utente, con le correzioni caso per caso
+
+**Decisioni prese:**
+
+- Contesto: i 608 acquistati risultavano troppo grandi (Ø22, metà della larghezza del motore) e gli MR62 disponibili in casa troppo piccoli
+- Decisione: **623ZZ, 3 × 10 × 4**. A 3 N di carico preme sull'alluminio con 53 MPa, contro i 150 a cui cede — tre volte di margine. Canale interno 12 mm invece dei 24 richiesti dai 608
+- Il motivo che ha pesato di più non è la pressione ma il foro: **3 mm significa M3, la stessa vite di tutto il resto della macchina.** Una sola misura di viteria su tutto il progetto
+- Alternative scartate: 624ZZ (Ø13, più margine ma introduce le M4 come seconda misura); restare sugli MR62 (margine risicato e M2 scomode); restare sui 608 (canale da 24 mm, carrello sproporzionato)
+- Supera la decisione del 2026-09-24 sui 608
+
+- Contesto: l'utente proponeva un cuscinetto grande montato perpendicolare, in mezzo agli altri, per premere sulla guida
+- Decisione: **scartata**
+- Motivo: un cuscinetto rotola solo se il suo asse è perpendicolare alla direzione di marcia; con l'asse parallelo alla corsa striscia e si appiattisce in un punto. E un Ø32 in mezzo a quattro Ø22 sporgerebbe di 5 mm, diventando l'unico a toccare e sollevando gli altri
+- È stata però recuperata l'intuizione sotto: un cuscinetto centrale su molla è un'alternativa valida all'eccentrico, scartata perché sulla guida serve rigidezza, non cedevolezza
+
+- Contesto: l'utente proponeva superfici di rotolamento in gomma per chiudere il gioco da sole
+- Decisione: **scartata sulle guide**
+- Motivo: la gomma non elimina il gioco, lo trasforma in cedevolezza. Il carico cambia a ogni accelerazione e inversione, quindi il carrello si sposterebbe in modo variabile lungo tutto il disegno — peggio del gioco, che almeno è costante e compensabile. In più l'attrito di rotolamento si impenna e la gomma prende la forma se la macchina resta ferma
+- Dove la cedevolezza serve è già prevista: la molla di precarico del pignone
+
+- Contesto: come fissare i cuscinetti senza annegare nel calcolo degli ingombri di dadi e bulloni
+- Decisione: **perni stampati Ø3 per le ruote fisse, viti M3 con tratto liscio per quelle regolabili**, e **asole al posto degli eccentrici**
+- Motivo: il perno stampato regge (5,7 MPa contro i 50 del PLA) ma non si regola; l'asola dà tre millimetri di corsa dove un eccentrico ne dà uno. Una vite M8 con dado richiederebbe 30 mm di spazio contro i 7 del cuscinetto
+- Supera l'indicazione sull'eccentrico data il 2026-09-24
+
+- Contesto: l'utente proponeva di accorciare il carrello avvicinando le ruote, per guadagnare foglio
+- Decisione: **non accorciare**, tenere le ruote a 80-100 mm lungo la corsa
+- Motivo: con un decimo di gioco e la penna 60 mm sotto il piano delle ruote, 80 mm di interasse danno 0,075 mm di errore sulla punta e 40 mm ne danno 0,15 — al limite del visibile. E la corsa guadagnata non serve: sulla base reale ne avanzano già 65 mm
+- Da rivedere se: la struttura definitiva riducesse la corsa disponibile sotto i 260 mm in Y
+
+**File consegnati/modificati:**
+- Pagina pubblicata: modello 3D navigabile del carrello — https://claude.ai/artifact/CTT88x6q9LKyBt84rNhPLA
+- Pagina aggiornata: disposizione dei cuscinetti, con la tavola sulla disposizione in larghezza — https://claude.ai/artifact/KyA5zQpxbfWVwYeRFV9S6S
+
+**Impatto su Vision/Pipeline:** Step 5 aggiornato nelle decisioni su cuscinetti, fissaggio, regolazione e base. Aggiunta la decisione del profilo unico a U, che rende superflua sull'asse X la regola della guida maestra (mantenuta per l'asse Y, dove le guide restano due pezzi distinti). Sostituita l'indicazione della base in MDF con il compensato effettivamente acquistato. Aggiunto il principio che lunghezza e larghezza del carrello hanno costi diversi.
+
+---
 
 ### [2026-09-24 18:44] Dall'SVG al G-code nell'interfaccia, e progetto meccanico con modulo 1,5
 
