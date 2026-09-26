@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 11
-**Ultimo aggiornamento:** 2026-09-26 15:27
+**Versione:** 12
+**Ultimo aggiornamento:** 2026-09-26 18:40
 
 ## Vision
 
@@ -32,6 +32,7 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-19] Verificati componenti hardware (batteria NASTIMA 12V, motori 17HS4023, driver A4988, alimentatore 24V riciclato da striscia LED) tramite confronto con i link Amazon e datasheet
 - [2026-09-19] Test ESP32 standalone via USB-C con sketch Blink su D2 (GPIO2) e resistenza 220 ohm — riuscito
 - [2026-09-19] Aggiunto modulo batteria 18650 (boost 5V + carica Type-C) e interruttore sulla linea 5V+ verso VIN — testato e funzionante
+- [2026-09-26] **L'alimentatore non è più il 24 V recuperato dalla striscia LED**, ma un DVE DSA-36W-12: **12 V, 3 A, 36 W**. Supera il dato del 2026-09-19. Nota importante sulle conseguenze: a corrente impostata uguale, **la tensione di alimentazione non cambia né la coppia né la temperatura dei motori**, perché l'A4988 è un driver a corrente controllata — la tensione decide solo quanto in fretta la corrente sale, quindi conta alle alte velocità. Bilancio a 12 V con tre motori a 0,6 A: 0,28 A ciascuno, 0,85 A in totale, ~14 W su 36 disponibili (28% della corrente). L'unico punto in cui i 12 V stringono è il collegamento di due motori in serie su un solo driver: 6,0 V dei 12 se ne vanno fra caduta resistiva, induttanza e forza controelettromotrice, contro i 3,0 V di un motore per driver
 
 #### Step 1.1 — Dashboard web di controllo e test
 
