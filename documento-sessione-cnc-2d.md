@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 12
-**Ultimo aggiornamento:** 2026-09-26 18:40
+**Versione:** 13
+**Ultimo aggiornamento:** 2026-09-26 17:48
 
 ## Vision
 
@@ -214,9 +214,16 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-26] **Il pignone non ha vite di fermo, e va bene così.** L'accoppiamento a pressione è talmente serrato che per smontare la prova sono serviti morsetti concatenati. La vite serviva a poter *regolare* la posizione assiale per il centraggio della doppia elica, ma quella regolazione si è spostata sulla cremagliera. Da ricontrollare fra qualche settimana di funzionamento, perché il PLA sotto tensione circonferenziale si rilassa; il sintomo di uno slittamento è un disegno progressivamente sfalsato senza alcun errore segnalato
 - [2026-09-26] **Alzare il piano del foglio è la leva più efficace di tutto il progetto**, non un dettaglio ergonomico. Con 0,10 mm di gioco su 60 mm di interasse ruote l'inclinazione è 1,67 mrad, e l'errore sulla punta scala linearmente con l'altezza della penna: 0,250 mm a 150 mm di sbalzo, 0,117 a 70 mm. La risoluzione della trasmissione è 0,029 mm, quindi a 150 mm l'errore geometrico è otto volte la risoluzione. Vincolo: il carrello spazza una striscia larga ±38 mm attorno all'asse del binario da Z 2,7 a Z 74, e il piano non può entrare in quel volume
 - [2026-09-26] Metodo per misurare l'attrito, da usare come metrica di qualità confrontabile: cercare l'**angolo minimo a cui il carrello si muove da solo** sul binario inclinato. La tangente è il μ effettivo — 5° = 0,09 (buono), 30° = 0,58 (qualcosa striscia). Con 1,5 kg in movimento, μ 0,09 costa 20 N·mm al pignone e μ 0,58 ne costa 130, su un NEMA 17 che alle velocità di lavoro ne dà 150÷200 utili
+- [2026-09-26] **Dati reali del motore** (17HS4023 iMetrx, etichetta): coppia di tenuta **130 mN·m**, corrente nominale **1,0 A/fase**, resistenza **~4,0 Ω/fase** (4,1 V a 1,0 A), peso **204 g**. È un pancake 42 × 42 × **23 mm**, non un NEMA 17 standard: circa **un terzo** della coppia di un 40 mm
+- [2026-09-26] **Corrente, calore e coppia sono la stessa manopola.** La coppia scala con la corrente; la corrente che si può dare la decide il PLA della culla. Con P = 2·I²·R sui 74 cm² di superficie del motore, e tenuto conto che la culla come disegnata copre il **51%** di quella superficie: a 0,6 A la carcassa sta a **74 °C con la culla piena** e a **58 °C con la culla alleggerita**. Alleggerire la culla (nervature invece di superfici piene sul fondo e sui due fianchi) vale quindi **0,1 A di corrente in più, cioè il 13% di coppia** — non è rifinitura
+- [2026-09-26] **Bilancio di coppia al punto di lavoro** (0,6 A, culla alleggerita): coppia 78 mN·m, e con il fattore 0,85 per la caduta a 21 giri/min su un raggio primitivo di 15 mm restano **4,42 N alla cremagliera**. Togliendo la quota per accelerare, l'angolo di distacco ammesso è 14° a 1,3 kg e 10° a 1,6 kg; **il target con margine 2× è sotto i 7°**. Il fattore 2 non è pignoleria: senza encoder una perdita di passo non viene segnalata da nulla e il disegno esce sbagliato da lì in poi
+- [2026-09-26] **Leve in riserva se la coppia risulta stretta**, in ordine di convenienza: (1) togliere massa, che agisce su entrambi i termini; (2) accelerazione da 1000 a 400 mm/s², che restituisce 0,9 N di budget attrito e si paga solo in tempo; (3) pignone z17 invece di z20 — **+18% di forza e risoluzione da 33,95 a 39,9 passi/mm, con la stessa cremagliera** perché dipende solo dal modulo, al costo di rifare la catena delle quote (l'asse scende di 2,25 mm); (4) motore da 40 mm, che triplica la coppia per ~10 € e +140 g
+- [2026-09-26] **La massa punisce due volte** (aumenta insieme l'attrito e la forza per accelerare), quindi il test della calamita sui profili pesa più di quanto sembri: la trave da 385 mm vale 174 g in alluminio contro 506 in acciaio, cioè **circa due gradi** di angolo ammesso in meno
 
 **Problemi aperti su questo step (al 2026-09-26):**
-- **Profondità del vano motore da verificare.** Fra le facce interne delle due pareti ci sono 23,5 mm, mentre il corpo di un NEMA 17 è lungo 34, 40 o 48 mm secondo il modello. Le viti posteriori non arrivano al coperchio: va misurata la lunghezza reale del motore col calibro e spostata la parete posteriore. Da verificare anche che il motore abbia davvero i quattro fori posteriori sul passo da 31 e quanto sono profondi (spesso 4÷5 mm, quindi la vite va scelta di conseguenza)
+- ~~Profondità del vano motore da verificare~~ — **risolto il 2026-09-26.** Il motore è un **pancake da 23,1 mm**, non un NEMA 17 standard da 34÷48: il vano da 23,5 mm è quindi corretto e le viti posteriori arrivano eccome al coperchio. Resta però **0,4 mm di gioco assiale**, che è più dei ±0,17 mm di tolleranza di centraggio della doppia elica: il motore va messo **in battuta sulla parete anteriore** (che è il riferimento della quota del pignone) con **due rondelle piane M3 da 0,5 mm** fra coperchio posteriore e parete posteriore, così le viti di dietro lo spingono in avanti invece di tirarlo indietro. Resta da verificare la profondità dei fori filettati posteriori (spesso 4÷5 mm) per scegliere la lunghezza delle viti
+- **Parallelismo cremagliera-binario entro 0,17 mm su tutta la corsa.** Conseguenza della doppia elica: se la cremagliera non è parallela al binario nella direzione della larghezza, il centraggio del pignone sull'apice deriva mentre il carrello avanza. Su 400 mm di corsa significa 0,024°. Va allineata **al binario**, non al bordo della base: far scorrere il carrello e controllare la distanza pignone-apice in quattro o cinque punti prima di fissare. Sintomo caratteristico di un errore: scorre bene in mezzo e si irrigidisce verso le estremità
+- **Interferenza geometrica fra cremagliera e fianco del carrello.** La cremagliera è larga 15,588 e va centrata sull'apice, cioè sull'asse del pignone; il carrello arriva a X −38,006. Vincolo: `X asse pignone ≤ −46,8`. Con l'asse a −45 (pignone a 1 mm dal fianco) il bordo interno della cremagliera cadrebbe 0,8 mm dentro il fianco, e i due pezzi si sfiorano in una fascia di soli 7 mm in altezza — il tipo di interferenza che in sezione non si vede
 - **L'asse Y non deve scaricarsi sul motore.** La carcassa del motore è l'oggetto che posiziona il pignone: qualunque carico strutturale che la attraversa si scarica sulla profondità di ingranamento, e il momento d'inerzia del ponte la modulerebbe a ogni inversione. Le quattro viti dedicate all'asse Y vanno nella struttura del carrello — i fianchi da 3 mm e il ponte a Z 52 — non nei fori del motore
 - **Quanto alzare il piano del foglio**, che dipende da due numeri ancora da fissare: dove starà il binario rispetto al foglio e a che quota sarà il sottotrave del ponte
 - **Test della calamita sui profili** (acciaio o alluminio): ancora da fare. Incide sul peso del ponte, 1,35 kg/m contro 465 g/m, e sulla flessione del labbro sotto la ruota, 0,10 mm in alluminio contro 0,035 in acciaio a pari carico
@@ -224,9 +231,9 @@ Macchina CNC 2D per disegno/plotter, con:
 
 ## Storico sessioni
 
-### [2026-09-26 15:27] Carrello validato in stampa, cremagliera disegnata e verificata, tre errori intercettati prima di stampare
+### [2026-09-26 17:48] Carrello validato in stampa, cremagliera verificata, e bilancio di coppia del motore
 
-**Riepilogo:** il carrello a U rovesciata passa tutte le verifiche strutturali sullo STEP e scorre perfettamente in stampa con mezzo set di cuscinetti; la cremagliera modulo 1,5 con gioco 0,2 è disegnata, verificata al centesimo e provata con il pignone a doppia elica; intercettati prima della stampa l'interasse dei fori NEMA sbagliato di 2 mm, due perni fuori quota di 5 centesimi e una cremagliera asimmetrica rispetto all'apice.
+**Riepilogo:** il carrello a U rovesciata passa tutte le verifiche strutturali sullo STEP e scorre perfettamente in stampa con mezzo set di cuscinetti; la cremagliera modulo 1,5 con gioco 0,2 è disegnata, verificata al centesimo e provata con il pignone a doppia elica; intercettati prima della stampa quattro errori (interasse fori NEMA sbagliato di 2 mm, due perni fuori quota di 5 centesimi, cremagliera asimmetrica rispetto all'apice, dato di coppia del motore sbagliato di 3,3× nell'annuncio); e chiuso il bilancio di coppia, che con un motore pancake da 130 mN·m rende l'angolo di distacco del carrello un passa/non passa sotto i 7°.
 
 **Cosa è stato fatto:**
 - **Messa a punto della lettura degli STEP** come strumento di verifica: estrazione dei nomi dei componenti, ingombri, volumi, tutti i cilindri con diametro/asse/direzione, distanze e compenetrazioni fra solidi, sezioni ASCII e sonde puntuali per la continuità del materiale. Su questa base sono state fatte tutte le verifiche sotto
@@ -234,6 +241,11 @@ Macchina CNC 2D per disegno/plotter, con:
 - **Prova di stampa del carrello riuscita**: con i cuscinetti di sinistra e quelli centrali, inclinando il binario di ~30° il carrello scorre su tutta la lunghezza e torna indietro senza impuntarsi
 - **Cremagliera disegnata, quotata e validata.** Consegnato il disegno con la cella unitaria da 6 punti per il pattern, la tabella nominale/con gioco e il posizionamento rispetto all'asse motore. Verificata sullo STEP dell'utente: passo 4,7124, spessore in testa 1,065, vano al piede 1,191, altezza 3,375 — tutto entro il mezzo centesimo
 - **Stampa di prova della cremagliera riuscita e ingranamento con il pignone perfetto**, il che conferma anche che i due V della doppia elica sono concordi
+- **Bilancio di coppia chiuso** sui dati reali dell'etichetta del motore (130 mN·m, 1,0 A, ~4,0 Ω, 204 g, pancake da 23 mm): punto di lavoro a 0,6 A con culla alleggerita → 4,42 N alla cremagliera, e target di attrito sotto i 7° di angolo di distacco. Trovato e quantificato il legame **corrente → calore → coppia**: alleggerire la culla del motore vale 0,1 A, cioè il 13% di coppia
+- **Verifica del vano motore chiusa**, e il problema aperto segnalato in questa stessa voce risulta inesistente: il motore è un pancake da 23,1 mm, quindi il vano da 23,5 mm va bene. Emersi però 0,4 mm di gioco assiale, che superano i ±0,17 mm di centraggio della doppia elica
+- **Montaggio del motore a 2 viti anteriori + 2 posteriori validato coi numeri**: le quattro viti formano un rettangolo di 31 × 40 mm nel piano orizzontale, e i carichi dell'ingranamento si traducono in 1,5 N e 4,1 N per coppia di viti. Confermata anche la scelta di non appendere l'asse Y al motore
+- **Trovata un'interferenza geometrica** fra la cremagliera e il fianco del carrello: con il pignone a 1 mm dal fianco, il bordo interno della cremagliera cade 0,8 mm dentro il carrello. Vincolo ricavato: asse pignone a X ≤ −46,8
+- **Alimentatore cambiato**: non più il 24 V della striscia LED ma un DVE DSA-36W-12 da **12 V / 3 A / 36 W**. Verificato che tre motori a 0,6 A assorbono 0,85 A (28% della portata) e che la tensione non incide né su coppia né su temperatura, perché l'A4988 regola corrente e non tensione
 
 **Bug: interasse dei fori di fissaggio del motore sbagliato di 2 mm**
 
@@ -246,6 +258,12 @@ Macchina CNC 2D per disegno/plotter, con:
 **Sintomo:** nessuno — trovato confrontando tutti i cilindri dello STEP fra loro
 **Causa:** i due perni della stazione a Y 0 erano Ø8,05 con collare Ø10,05, gli altri sei Ø8,1 / Ø10,1. Uno sketch modificato su una stazione e non sull'altra. Cinque centesimi stanno dentro il campo in cui la tolleranza dei perni era stata tarata, quindi quei due cuscinetti sarebbero venuti più lenti — e sono i perni alti, quelli che portano il peso
 **Fix applicato:** uniformati tutti e otto a Ø8,1 — confermato dall'utente
+
+**Bug: dato di coppia contraddittorio nell'annuncio del motore**
+
+**Sintomo:** la descrizione dichiara "coppia elevata (130 mN·m (60 oz.in))", ma i due valori non sono la stessa cosa — 60 oz·in valgono 424 mN·m, cioè 3,3 volte 130
+**Causa:** copia-incolla dalla variante da 40 mm, venduta sulla stessa pagina dal medesimo venditore
+**Fix applicato:** assunto **130 mN·m**, verificato per coerenza fisica — la coppia scala col volume del rotore, e un 40 mm a 1,7 A dà 40 N·cm, quindi dimezzando il pacco e scendendo a 1,0 A si arriva esattamente a 12÷13 N·cm. Usando il dato sbagliato il bilancio di coppia sarebbe stato sovrastimato di tre volte, con il rischio di scoprirlo solo a macchina montata
 
 **Bug: cremagliera asimmetrica rispetto all'apice del chevron**
 
@@ -270,11 +288,21 @@ Macchina CNC 2D per disegno/plotter, con:
 - Decisione: **due viti sulla flangia anteriore e due sul coperchio posteriore.** Verificato coi numeri: le quattro viti formano un rettangolo di 31 × 40 mm nel piano orizzontale, e i carichi dell'ingranamento si traducono in 1,5 N e 4,1 N per coppia di viti. Il motore è pienamente vincolato
 - Alternative scartate: quattro viti sulla sola flangia anteriore, che avrebbe richiesto di portare la flangia fino a Z 90 occupando lo spazio destinato all'asse Y
 
+- Contesto: il motore è un pancake da 23 mm con 130 mN·m, un terzo di un NEMA 17 da 40, e serviva capire quanto margine di coppia resta
+- Decisione: **punto di lavoro a 0,6 A con la culla del motore alleggerita** (4,42 N alla cremagliera, carcassa a 58 °C), e **l'angolo di distacco del carrello diventa un passa/non passa: target sotto i 7°**, non più solo una metrica di qualità
+- Alternative tenute in riserva, in ordine: accelerazione a 400 mm/s², pignone z17 (+18% forza *e* risoluzione migliore, stessa cremagliera), secondo motore, motore da 40 mm
+- Da rivedere se: l'angolo misurato sul carrello completo supera i 10°
+
+- Contesto: l'utente ha 5 motori e ha proposto di motorizzare anche il lato passivo per raddoppiare la forza sull'asse
+- Decisione: **tenuta come riserva, non adottata adesso.** Raddoppia davvero la forza (4,42 → 8,84 N) e porta l'angolo tranquillo da 7° a 17°, al costo di 214 g di massa in più
+- Realizzazione preferita se si adotta: **due motori in serie su un solo driver** — zero GPIO in più, zero driver in più, lockstep elettrico perfetto. A 12 V però la caduta resistiva si mangia 6,0 V dei 12 contro i 3,0 di un motore per driver, quindi con un A4988 di scorta conviene la strada dei due driver separati (`motor0`/`motor1` sullo stesso asse in FluidNC). In entrambi i casi i due lati vanno messi in fase meccanicamente al montaggio, facendo scorrere la seconda cremagliera con i motori alimentati
+- Avvertenza registrata: **il secondo motore non riduce l'attrito, dà solo la forza per vincerlo.** Se il carrello parte a 20° e si aggiunge il motore, si è nascosto un difetto che continuerà a consumare alluminio e a fare rumore. Misurare prima l'angolo, decidere dopo
+
 **File consegnati/modificati:**
 - Disegno quotato della cremagliera m1,5 con gioco 0,2 — pubblicato come artefatto, aggiornato una volta (orientamento di stampa e metodo di fissaggio)
 - `documento-sessione-cnc-2d.md` — questa voce, correzioni alle decisioni di Step 5 superate, nuove note di Step 5
 
-**Impatto su Vision/Pipeline:** Step 5 — due decisioni progettuali superate (cuscinetti 623ZZ → 608 + MR63; precarico a molla → gioco sul dente più registrazione dell'ingranamento) e dieci note nuove di cronologia. Nessun cambio alla Vision.
+**Impatto su Vision/Pipeline:** Step 1 — registrato il cambio di alimentatore (12 V / 3 A), che supera il dato del 2026-09-19. Step 5 — due decisioni progettuali superate (cuscinetti 623ZZ → 608 + MR63; precarico a molla → gioco sul dente più registrazione dell'ingranamento), quindici note nuove di cronologia, e la sezione dei problemi aperti rivista: il vano motore risulta risolto, mentre si aggiungono il parallelismo cremagliera-binario entro 0,17 mm e l'interferenza geometrica fra cremagliera e fianco. Nessun cambio alla Vision.
 
 ---
 
