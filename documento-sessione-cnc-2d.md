@@ -1,7 +1,17 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 13
-**Ultimo aggiornamento:** 2026-09-26 17:48
+**Versione:** 14
+**Ultimo aggiornamento:** 2026-09-26 18:46
+
+## Regole di co-editing
+
+Questo documento è scritto da **due sessioni Claude Code in parallelo sullo stesso branch**: una sul fronte **meccanica/firmware**, una sul fronte **contenuti e serie social**. Per non perdere voci a vicenda:
+
+1. **`git fetch` e rebase prima di scrivere, push subito dopo.** Non lasciare modifiche locali non pushate: la finestra di collisione è tutta lì.
+2. **Marca la voce di storico con il fronte di lavoro**, es. `### [2026-09-26 17:48] (meccanica) …`. Due sessioni diverse sono due voci diverse: la regola "una voce per sessione" non impone di fonderle.
+3. **Le note dei singoli Step si appendono in fondo al proprio Step**, quindi non collidono mai finché le due sessioni lavorano su Step diversi.
+4. **Se la Versione va in conflitto**, chi risolve mette `max(A, B) + 1` e tiene **entrambe** le voci, ordinate per data decrescente. Mai scartarne una.
+5. Gli unici punti di contesa reali sono **le due righe di testata** e **la prima riga dopo `## Storico sessioni`**. Tutto il resto è partizionato per costruzione.
 
 ## Vision
 
