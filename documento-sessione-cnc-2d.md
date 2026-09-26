@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 10
-**Ultimo aggiornamento:** 2026-09-25 12:17
+**Versione:** 11
+**Ultimo aggiornamento:** 2026-09-26 15:27
 
 ## Vision
 
@@ -168,9 +168,9 @@ Macchina CNC 2D per disegno/plotter, con:
 **Decisioni progettuali:**
 - **Trasmissione a cremagliera e pignone**, non a cinghia. Motivo: si stampa in 3D a costo quasi nullo, mentre le cinghie richiedono cinghia, pulegge e tenditori acquistati. Alternativa scartata: cinghia GT2, che avrebbe gioco quasi nullo e motori fissi — resta la via di ripiego se il gioco della cremagliera risultasse ingestibile, e non richiederebbe di rifare la struttura ma solo i supporti dei motori
 - **Motore solidale al carrello**, conseguenza intrinseca della cremagliera: per tenere il motore fermo dovrebbe muoversi la cremagliera, raddoppiando lo spazio necessario. Comporta ~300 g di massa mobile in più sull'asse X, da compensare con velocità moderate
-- **Precarico a molla del pignone contro la cremagliera**: il motore non è fissato rigido ma su una piastrina che oscilla attorno a un perno, tirata verso i denti da una molla. È la contromisura al gioco fra denti stampati, che su un plotter — che inverte direzione a ogni segmento — si tradurrebbe in contorni che non chiudono e tratti sdoppiati
+- **Gioco gestito assottigliando il dente della cremagliera di 0,2 mm, non con un precarico a molla.** Supera la decisione del precarico a molla: il gioco effettivo si regola con la profondità di ingranamento (per una cremagliera `j = 2·Δc·tan20°`, quindi 0,2747 mm di avvicinamento azzerano lo 0,2), e il metodo pratico è la striscia di carta da 0,10 mm nel punto più stretto. Una molla avrebbe aggiunto un grado di libertà su un carrello che ne ha già abbastanza. Impostazione precedente: precarico a molla del pignone contro la cremagliera: il motore non è fissato rigido ma su una piastrina che oscilla attorno a un perno, tirata verso i denti da una molla. È la contromisura al gioco fra denti stampati, che su un plotter — che inverte direzione a ogni segmento — si tradurrebbe in contorni che non chiudono e tratti sdoppiati
 - **Due vincoli a livelli diversi**: il carrello è catturato dalla guida e non può sollevarsi, il motore resta libero di flottare sul carrello. I due vincoli agiscono su corpi diversi e non si annullano a vicenda
-- **Cuscinetti 623ZZ (3 × 10 × 4) che rotolano su guide metalliche**, non cuscinetti lineari su barre tonde. Il diametro è scelto sulla pressione di contatto: a 3 N un Ø10 preme sull'alluminio con 53 MPa contro i 27 di un 608 e gli 86 di un MR62, e l'alluminio cede attorno ai 150. Il foro da 3 mm è M3, **la stessa vite di tutto il resto della macchina** — motore, cremagliera, regolazioni. Le superfici di rotolamento devono essere metallo: l'anello esterno è acciaio temprato e in poche ore scava un solco nella plastica stampata
+- **Cuscinetti 608ZZ (8 × 22 × 7) per la pinza sui labbri, MR63 (3 × 6 × 2,5) per la guida laterale.** Supera la scelta dei 623ZZ del 2026-09-25: i 608 erano già in casa, e il profilo reale acquistato ha labbri sporgenti che si prestano a essere pinzati da una ruota sopra e una sotto. Otto 608 (due per stazione, due stazioni per fianco) più quattro MR63 dentro il canale. La pressione di contatto di un 608 a 3 N è 27 MPa contro i 150 a cui cede l'alluminio: margine 5×. Impostazione precedente, mantenuta come principio: cuscinetti 623ZZ (3 × 10 × 4) che rotolano su guide metalliche, non cuscinetti lineari su barre tonde. Il diametro è scelto sulla pressione di contatto: a 3 N un Ø10 preme sull'alluminio con 53 MPa contro i 27 di un 608 e gli 86 di un MR62, e l'alluminio cede attorno ai 150. Il foro da 3 mm è M3, **la stessa vite di tutto il resto della macchina** — motore, cremagliera, regolazioni. Le superfici di rotolamento devono essere metallo: l'anello esterno è acciaio temprato e in poche ore scava un solco nella plastica stampata
 - **Ruote impilate a coppie, non sfalsate**, possibile perché due Ø10 stanno in 20 mm. La ruota di sopra e quella di sotto pinzano lo stesso punto del canale, quindi la regolazione è diretta invece che a distanza
 - **Regolazione con asole M3, non con eccentrici.** Un eccentrico da mezzo millimetro di offset copre un millimetro di corsa; il gioco da recuperare può essere di due o tre. L'asola dà tutta la corsa che serve e usa M3 invece di M8
 - **Perni stampati Ø3 per le ruote fisse, viti M3 con tratto liscio per quelle regolabili.** Il conto sul perno stampato dà 5,7 MPa contro i 50 del PLA. Il cuscinetto non deve mai girare sulle creste di un filetto: appoggia su tre punti e balla
@@ -205,8 +205,77 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-25] **La guida va rialzata dal pannello**, scoperto disegnando il CAD: le ruote inferiori sporgono sotto il profilo, quindi con la guida appoggiata direttamente al legno striscerebbero sul pannello. Serve un distanziale continuo sotto tutta la guida — non blocchetti isolati, perché il profilo da 1,5 mm flette fra un appoggio e l'altro sotto il precarico
 - [2026-09-25] **Conseguenza da non dimenticare: il rialzo della guida alza tutto.** Il carrello sale, quindi sale l'asse del motore, quindi la cremagliera deve salire dello stesso identico valore perché il pignone continui a ingranare. La relazione resta `fondo cremagliera = asse motore − 26,875`: se si rialza la guida di 5 mm e ci si dimentica della cremagliera, il pignone non tocca più i denti
 - [2026-09-25] Il rialzo va misurato, non stimato per eccesso: ogni millimetro in più allontana la penna dal piano delle ruote e amplifica l'errore di beccheggio e rollio di circa l'1% al millimetro. Regola: sporgenza reale delle ruote più 2 mm di franco
+- [2026-09-26] **Sezione reale del binario ricavata dallo STEP**, e non è un U come si pensava: è un profilo a cappello, 66,4 largo × 23,2 alto, scatola centrale 23,7, canale interno 20,0 × 21,9, fondo e labbri 1,3 mm, pareti 1,85. I labbri sporgono in fuori da X 11,85 a 33,2: sono loro la superficie di rotolamento, pinzata fra un 608 sopra e uno sotto
+- [2026-09-26] **Architettura del carrello: U rovesciata che cavalca il binario.** Due fianchi verticali da 3 mm fuori dal binario (X ±35 ÷ ±38, con 1,8 mm di aria dal bordo del labbro), perni Ø8,1 con collare Ø10,1 che puntano verso l'interno, e un ponte a Z ≈ 52 che lega i fianchi al blocco centrale. Verificato sullo STEP: i fianchi sono piastre **continue su tutti gli 80 mm** da Z 10,8 a Z 34,2, quindi l'anello di forza fra perno basso e perno alto sta interamente dentro un unico pezzo di materiale, e le due stazioni sono legate rigidamente
+- [2026-09-26] **L'ordine dei pezzi lungo l'asse del motore è obbligato:** corpo motore → flangia → pignone → cremagliera. L'albero esce dal lato flangia, quindi mettendo il motore fuori dai cuscinetti il pignone finirebbe dentro, dove c'è il binario. Conseguenza: il corpo del motore deve stare verso l'interno, cioè sopra il carrello, e questo fissa l'altezza minima dell'asse
+- [2026-09-26] **Interasse dei 608 a 23,40 mm** (labbro 1,3 + due raggi da 11 = 23,30), cioè 0,10 mm di gioco nella pinza. Validato: mezzo carrello scorre su tutta la lunghezza in entrambi i versi. Da rifare con il carrello completo, perché con entrambi i lati montati conta la complanarità dei due labbri lungo la corsa
+- [2026-09-26] **Doppia elica a 30° su pignone e cremagliera, confermata funzionante.** Verificate sullo STEP la compatibilità geometrica (stesso modulo trasversale, stesso angolo, apice a metà fascia su entrambi) e la dentatura (spessore in testa 1,065 e vano al piede 1,191 sulla cremagliera, spessore su primitiva 2,3562 nominale sul pignone: gioco totale 0,20 tutto sulla cremagliera). Prezzo della doppia elica: il pignone va centrato sull'apice della cremagliera entro **±0,17 mm**, contro i ±2 mm che darebbero i denti retti
+- [2026-09-26] **Il pignone non ha vite di fermo, e va bene così.** L'accoppiamento a pressione è talmente serrato che per smontare la prova sono serviti morsetti concatenati. La vite serviva a poter *regolare* la posizione assiale per il centraggio della doppia elica, ma quella regolazione si è spostata sulla cremagliera. Da ricontrollare fra qualche settimana di funzionamento, perché il PLA sotto tensione circonferenziale si rilassa; il sintomo di uno slittamento è un disegno progressivamente sfalsato senza alcun errore segnalato
+- [2026-09-26] **Alzare il piano del foglio è la leva più efficace di tutto il progetto**, non un dettaglio ergonomico. Con 0,10 mm di gioco su 60 mm di interasse ruote l'inclinazione è 1,67 mrad, e l'errore sulla punta scala linearmente con l'altezza della penna: 0,250 mm a 150 mm di sbalzo, 0,117 a 70 mm. La risoluzione della trasmissione è 0,029 mm, quindi a 150 mm l'errore geometrico è otto volte la risoluzione. Vincolo: il carrello spazza una striscia larga ±38 mm attorno all'asse del binario da Z 2,7 a Z 74, e il piano non può entrare in quel volume
+- [2026-09-26] Metodo per misurare l'attrito, da usare come metrica di qualità confrontabile: cercare l'**angolo minimo a cui il carrello si muove da solo** sul binario inclinato. La tangente è il μ effettivo — 5° = 0,09 (buono), 30° = 0,58 (qualcosa striscia). Con 1,5 kg in movimento, μ 0,09 costa 20 N·mm al pignone e μ 0,58 ne costa 130, su un NEMA 17 che alle velocità di lavoro ne dà 150÷200 utili
+
+**Problemi aperti su questo step (al 2026-09-26):**
+- **Profondità del vano motore da verificare.** Fra le facce interne delle due pareti ci sono 23,5 mm, mentre il corpo di un NEMA 17 è lungo 34, 40 o 48 mm secondo il modello. Le viti posteriori non arrivano al coperchio: va misurata la lunghezza reale del motore col calibro e spostata la parete posteriore. Da verificare anche che il motore abbia davvero i quattro fori posteriori sul passo da 31 e quanto sono profondi (spesso 4÷5 mm, quindi la vite va scelta di conseguenza)
+- **L'asse Y non deve scaricarsi sul motore.** La carcassa del motore è l'oggetto che posiziona il pignone: qualunque carico strutturale che la attraversa si scarica sulla profondità di ingranamento, e il momento d'inerzia del ponte la modulerebbe a ogni inversione. Le quattro viti dedicate all'asse Y vanno nella struttura del carrello — i fianchi da 3 mm e il ponte a Z 52 — non nei fori del motore
+- **Quanto alzare il piano del foglio**, che dipende da due numeri ancora da fissare: dove starà il binario rispetto al foglio e a che quota sarà il sottotrave del ponte
+- **Test della calamita sui profili** (acciaio o alluminio): ancora da fare. Incide sul peso del ponte, 1,35 kg/m contro 465 g/m, e sulla flessione del labbro sotto la ruota, 0,10 mm in alluminio contro 0,035 in acciaio a pari carico
+- **Gioco della pinza con il carrello completo**: misurato e validato con mezzo carrello, da rifare con entrambi i lati montati. Se si irrigidisce in un punto della corsa non è la stampa ma la complanarità dei due labbri, e la cura è portare l'interasse dei 608 da 23,40 a 23,50
 
 ## Storico sessioni
+
+### [2026-09-26 15:27] Carrello validato in stampa, cremagliera disegnata e verificata, tre errori intercettati prima di stampare
+
+**Riepilogo:** il carrello a U rovesciata passa tutte le verifiche strutturali sullo STEP e scorre perfettamente in stampa con mezzo set di cuscinetti; la cremagliera modulo 1,5 con gioco 0,2 è disegnata, verificata al centesimo e provata con il pignone a doppia elica; intercettati prima della stampa l'interasse dei fori NEMA sbagliato di 2 mm, due perni fuori quota di 5 centesimi e una cremagliera asimmetrica rispetto all'apice.
+
+**Cosa è stato fatto:**
+- **Messa a punto della lettura degli STEP** come strumento di verifica: estrazione dei nomi dei componenti, ingombri, volumi, tutti i cilindri con diametro/asse/direzione, distanze e compenetrazioni fra solidi, sezioni ASCII e sonde puntuali per la continuità del materiale. Su questa base sono state fatte tutte le verifiche sotto
+- **Carrello (`tot_prova_3`) verificato e approvato.** Corpo unico, fianchi da 3 mm continui su tutti gli 80 mm fra Z 10,8 e Z 34,2, perno alto annegato con 18 mm di materiale sopra (non a sbalzo come temuto), ponte a Z 52 che lega i fianchi al centro, **0,4 mm di aria dal binario** su tutta la corsa, 12 cuscinetti tangenti senza compenetrazione, 7,95 mm dal legno
+- **Prova di stampa del carrello riuscita**: con i cuscinetti di sinistra e quelli centrali, inclinando il binario di ~30° il carrello scorre su tutta la lunghezza e torna indietro senza impuntarsi
+- **Cremagliera disegnata, quotata e validata.** Consegnato il disegno con la cella unitaria da 6 punti per il pattern, la tabella nominale/con gioco e il posizionamento rispetto all'asse motore. Verificata sullo STEP dell'utente: passo 4,7124, spessore in testa 1,065, vano al piede 1,191, altezza 3,375 — tutto entro il mezzo centesimo
+- **Stampa di prova della cremagliera riuscita e ingranamento con il pignone perfetto**, il che conferma anche che i due V della doppia elica sono concordi
+
+**Bug: interasse dei fori di fissaggio del motore sbagliato di 2 mm**
+
+**Sintomo:** nessuno ancora — intercettato nel file `tot_prova_2` mentre la stampa di prova era in corso
+**Causa:** i fori erano a 33,0 mm di interasse; il NEMA 17 li ha normati a 31,0. Ogni foro fuori di 1 mm, contro i ±0,5 che perdona un foro Ø4 attraversato da una vite M3
+**Fix applicato:** corretto a 31,0 in `tot_prova_3`, verificato. Resta uno scarto di 0,62 mm fra il centro del pattern e l'asse del foro Ø37 (0,37 in Y, 0,50 in Z), che però è innocuo perché la cremagliera verrà posizionata a partire dal motore già montato
+
+**Bug: due perni alti fuori quota di 5 centesimi**
+
+**Sintomo:** nessuno — trovato confrontando tutti i cilindri dello STEP fra loro
+**Causa:** i due perni della stazione a Y 0 erano Ø8,05 con collare Ø10,05, gli altri sei Ø8,1 / Ø10,1. Uno sketch modificato su una stazione e non sull'altra. Cinque centesimi stanno dentro il campo in cui la tolleranza dei perni era stata tarata, quindi quei due cuscinetti sarebbero venuti più lenti — e sono i perni alti, quelli che portano il peso
+**Fix applicato:** uniformati tutti e otto a Ø8,1 — confermato dall'utente
+
+**Bug: cremagliera asimmetrica rispetto all'apice del chevron**
+
+**Sintomo:** nessuno in funzionamento, ma margine del pignone ridotto a 0,93 mm su un lato contro 2,66 sull'altro
+**Causa:** nel trimmare la larghezza da 17,321 a 15,588 il taglio è stato fatto su un solo lato, lasciando l'apice del V a 8,660 da un bordo e 6,928 dall'altro. Con ±0,17 mm di tolleranza di centraggio, 0,93 è sottile — e soprattutto impedisce di riferire la cremagliera al proprio bordo in fase di montaggio
+**Fix applicato:** resa simmetrica — confermato dall'utente
+
+**Decisioni prese:**
+
+- Contesto: la staffa del binario va rialzata di ~5 mm, e con l'asse motore a Z 74,65 la cremagliera cade a 53 mm sopra il piano del legno, servendo un supporto molto alto
+- Decisione: **rialzo in legno, e motore lasciato alla quota attuale.** Un listello alto 53 mm avvitato alla base è più rigido di qualunque cosa stampata di quell'altezza, costa due euro e si fa in venti minuti
+- Alternative scartate: (a) abbassare il motore infilandolo fra le due stazioni di cuscinetti, che avrebbe portato il supporto a 30 mm ma richiedeva di allargare l'interasse ruote da 60 a 70 mm perché il corpo da 42,3 entrasse nella finestra da 38; (b) motore ad asse verticale con cremagliera a denti laterali, supporto a 15 mm, scartata perché il pignone sarebbe finito in fondo a 24 mm di albero a sbalzo
+- Da rivedere se: il listello di legno si muove con l'umidità in modo da alterare l'ingranamento lungo la corsa
+
+- Contesto: serviva decidere se l'alloggiamento del motore fosse un pezzo separato bullonato o integrato nel carrello, e come garantire la regolazione dell'ingranamento in assenza di asole
+- Decisione: **alloggiamento integrato nel carrello, e la cremagliera viene posizionata a partire dal motore già montato.** È il motore a dire dove va la cremagliera, non il contrario
+- Alternative scartate: alloggiamento bullonato con asole verticali da ±2 mm, che era la raccomandazione iniziale. Diventa superfluo se l'elemento regolabile è la cremagliera
+- Conseguenza operativa: la regolazione deve comunque esistere, e si sposta tutta sulla cremagliera — spessori sotto per la profondità di ingranamento, fori Ø5 nel listello per viti M3 per il centraggio laterale della doppia elica, e fori pilota della cremagliera forati **dopo** aver trovato la posizione. Ordine di montaggio: binario → carrello → motore → cremagliera
+- Da rivedere se: si rende necessario smontare il motore dopo aver fissato la cremagliera, perché a quel punto non resta margine di recupero
+
+- Contesto: il motore ha quattro fori di fissaggio anche sul coperchio posteriore, e l'utente voleva riservare i fori superiori all'attacco dell'asse Y
+- Decisione: **due viti sulla flangia anteriore e due sul coperchio posteriore.** Verificato coi numeri: le quattro viti formano un rettangolo di 31 × 40 mm nel piano orizzontale, e i carichi dell'ingranamento si traducono in 1,5 N e 4,1 N per coppia di viti. Il motore è pienamente vincolato
+- Alternative scartate: quattro viti sulla sola flangia anteriore, che avrebbe richiesto di portare la flangia fino a Z 90 occupando lo spazio destinato all'asse Y
+
+**File consegnati/modificati:**
+- Disegno quotato della cremagliera m1,5 con gioco 0,2 — pubblicato come artefatto, aggiornato una volta (orientamento di stampa e metodo di fissaggio)
+- `documento-sessione-cnc-2d.md` — questa voce, correzioni alle decisioni di Step 5 superate, nuove note di Step 5
+
+**Impatto su Vision/Pipeline:** Step 5 — due decisioni progettuali superate (cuscinetti 623ZZ → 608 + MR63; precarico a molla → gioco sul dente più registrazione dell'ingranamento) e dieci note nuove di cronologia. Nessun cambio alla Vision.
+
+---
 
 ### [2026-09-25 12:17] Materiali acquistati: il progetto si adatta a quello che esiste in ferramenta
 
