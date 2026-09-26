@@ -11,7 +11,12 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 
 | Voce | Quantità | Prezzo | Stato | Note |
 |------|----------|--------|-------|------|
-| — | — | — | — | in attesa di screenshot |
+| ESP32 NodeMCU (Diymore, USB-C, CH340) | 2 pezzi | 17,98 € | confermato | scheda di sviluppo, WiFi+BT |
+| Breadboard Kit + jumper wire (AUKENIEN) | 4 breadboard (400+830) + cavi M/M e a U | 15,99 € | confermato | opzione "Breadboard+JW" |
+| Micro servo 9G (ARCELI) | 2 pezzi | 5,99 € | confermato | per il pen-lift (asse Z) |
+| Modulo step-up Type-C 5V 2A (DollaTek) | 5 pezzi | 8,99 € | confermato | boost/carica batteria 18650 |
+| Motori NEMA17 17HS4023 (iMetrx) | 5 pezzi | 52,86 € | confermato | ne servono 2, 3 di scorta |
+| Driver A4988 con dissipatore (ARCELI) | 5 pezzi | 8,99 € | confermato | coprono anche i moduli bruciati durante i test |
 
 ## Meccanica
 
@@ -21,6 +26,8 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 | Viti M3 (conf. da 16, 10, 25 mm) | 3 confezioni | — | stima | incluso nel totale Brico, split da confermare |
 | Barre di ferro (profilo a U + angolare forato) | 2 | — | stima | incluso nel totale Brico, split da confermare |
 | **Totale scontrino Brico** | — | **30,60 €** | confermato | somma delle tre voci sopra |
+| Cuscinetti 608RS 8x22x7mm | 20 pezzi | 11,99 € | confermato | scartati, troppo grandi — superati dalla scelta 623ZZ |
+| Cuscinetti MR63ZZ 3x6x2,5mm | 10 pezzi | 9,95 € | confermato | alternativa provata, canale troppo stretto — superata dalla scelta 623ZZ |
 
 ## Materiale di stampa 3D
 
@@ -32,7 +39,7 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 
 | Voce | Quantità | Prezzo | Stato | Note |
 |------|----------|--------|-------|------|
-| — | — | — | — | in attesa di screenshot |
+| Mini calamite MEALOS (100 pz, misti 3x1/4x2/5x2mm) | 100 pz | 14,65 € | confermato | uso sulla macchina da confermare |
 
 ---
 
