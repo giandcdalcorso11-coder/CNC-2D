@@ -19,9 +19,11 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 | Driver A4988 con dissipatore (ARCELI) | 5 pezzi | 8,99 € | confermato | coprono anche i moduli bruciati durante i test |
 | Interruttori a scorrimento SPDT (RUNCCI-YUN) | 30 pezzi | 9,48 € | confermato | incluso quello sulla linea 5V+ verso VIN |
 | Display LCD 1602 I2C (Freenove) | 2 pezzi | 12,95 € | confermato | da integrare verso fine progetto, solo 2 GPIO (SDA/SCL) |
-| Starter kit breadboard Miuzei (Kit A) | 1 kit | 21,99 € | confermato | resistenze, LED, potenziometro, jumper, alimentatore breadboard |
-| Batterie ricaricabili NiMH 3500 mAh (Generic) | 6 pezzi | 27,99 € | confermato | alimentazione logica ESP32 |
+| Starter kit breadboard Miuzei (Kit A) | 1 kit | 21,99 € | confermato | include condensatori, pulsanti, resistenze e cavetti già usati nel progetto — nessuna voce separata per questi |
+| Batterie ricaricabili NiMH 3500 mAh (Generic) | 6 pezzi | 27,99 € | stima | acquisto originale non ritrovato, prezzo di un articolo analogo |
 | Alloggiamento batterie (portabatterie) | 1 | ~2,50 € | stima | ordine non trovato, prezzo stimato — da confermare |
+| Alimentatore switching 12V/3A (equivalente) | 1 | 15,19 € | stima | già posseduto/recuperato da materiale esistente, non riacquistato — prezzo di un articolo equivalente su Amazon.it |
+| Modulo Nano-V3 + Nano I/O Shield (QIQIAZI) | 3 pezzi | 18,99 € | confermato | riadattata come morsettiera generica ("Nano Terminal Adapter") per i collegamenti di potenza |
 
 ## Meccanica
 
@@ -50,15 +52,18 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 
 ## Totale spese (parziale)
 
-- Elettronica: **185,71 €** (di cui 2,50 € stimati, alloggiamento batterie)
+- Elettronica: **219,89 €** (di cui 45,68 € stimati: batterie, alloggiamento, alimentatore)
 - Meccanica (incl. Brico): **52,54 €**
 - Materiale di stampa 3D (bobina acquistata): **52,99 €**
 - Altro: **14,65 €**
 
-**Totale acquistato ad oggi: 305,89 €**
+**Totale ad oggi: 340,07 €**
 
 Note:
 - Il totale Brico (30,60 €) è ancora un aggregato stimato (legno + viti + barre), da confermare con lo scontrino
 - Il costo del PLA+ è quello della bobina intera da 4 kg; solo una piccola parte (~150 g) è stata effettivamente consumata finora
 - I cuscinetti 608RS e MR63ZZ sono spese reali ma di tentativi scartati, non del progetto finale (623ZZ ancora da inserire in elenco quando arriva lo screenshot)
 - L'alloggiamento batterie non ha ordine ritrovato: prezzo stimato, da correggere se recuperi lo scontrino
+- L'alimentatore 12V/3A e il condensatore 100 µF/50V erano già disponibili in casa (recuperati, non riacquistati per il progetto): il condensatore rientra comunque nello starter kit Miuzei già conteggiato, mentre per l'alimentatore è stato stimato il prezzo di un articolo equivalente per completezza del totale
+- La batteria NASTIMA 12V citata nelle verifiche hardware iniziali non è stata usata: è stata sostituita dall'alimentatore 12V/3A, quindi non compare come voce di costo
+- Strumenti (multimetro etc.) esclusi volutamente dal conteggio
