@@ -17,6 +17,9 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 | Modulo step-up Type-C 5V 2A (DollaTek) | 5 pezzi | 8,99 € | confermato | boost/carica batteria 18650 |
 | Motori NEMA17 17HS4023 (iMetrx) | 5 pezzi | 52,86 € | confermato | ne servono 2, 3 di scorta |
 | Driver A4988 con dissipatore (ARCELI) | 5 pezzi | 8,99 € | confermato | coprono anche i moduli bruciati durante i test |
+| Interruttori a scorrimento SPDT (RUNCCI-YUN) | 30 pezzi | 9,48 € | confermato | incluso quello sulla linea 5V+ verso VIN |
+| Display LCD 1602 I2C (Freenove) | 2 pezzi | 12,95 € | confermato | da integrare verso fine progetto, solo 2 GPIO (SDA/SCL) |
+| Starter kit breadboard Miuzei (Kit A) | 1 kit | 21,99 € | confermato | resistenze, LED, potenziometro, jumper, alimentatore breadboard |
 
 ## Meccanica
 
@@ -33,21 +36,26 @@ Elenco spese per la costruzione della macchina. Prezzi in euro, IVA/spedizione i
 
 | Voce | Quantità | Prezzo | Stato | Note |
 |------|----------|--------|-------|------|
-| PLA+ Sunlu nero | ~150 g (parziale, lavoro in corso) | — | in corso | quantità finale e prezzo a fine lavorazione |
+| PLA+2.0 Sunlu nero (bobina) | 4 kg (4x1kg) | 52,99 € | confermato | acquisto della bobina; consumo effettivo ~150 g finora, in corso |
 
 ## Altro
 
 | Voce | Quantità | Prezzo | Stato | Note |
 |------|----------|--------|-------|------|
-| Mini calamite MEALOS (100 pz, misti 3x1/4x2/5x2mm) | 100 pz | 14,65 € | confermato | uso sulla macchina da confermare |
+| Mini calamite MEALOS (100 pz, misti 3x1/4x2/5x2mm) | 100 pz | 14,65 € | confermato | ancoraggio del foglio sul piano (foglio magnetico o incassate nel legno) |
 
 ---
 
 ## Totale spese (parziale)
 
-- Brico: **30,60 €**
-- Elettronica: in attesa
-- PLA+: in attesa (fine lavorazione)
-- Altro: in attesa
+- Elettronica: **155,22 €**
+- Meccanica (incl. Brico): **52,54 €**
+- Materiale di stampa 3D (bobina acquistata): **52,99 €**
+- Altro: **14,65 €**
 
-**Totale confermato ad oggi: 30,60 €**
+**Totale acquistato ad oggi: 275,40 €**
+
+Note:
+- Il totale Brico (30,60 €) è ancora un aggregato stimato (legno + viti + barre), da confermare con lo scontrino
+- Il costo del PLA+ è quello della bobina intera da 4 kg; solo una piccola parte (~150 g) è stata effettivamente consumata finora
+- I cuscinetti 608RS e MR63ZZ sono spese reali ma di tentativi scartati, non del progetto finale (623ZZ ancora da inserire in elenco quando arriva lo screenshot)
