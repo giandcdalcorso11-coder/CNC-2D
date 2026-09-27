@@ -19,31 +19,33 @@ Stile di riferimento: la serie di Giovanni Dapont sulla barchetta radiocomandata
 
 ## Registro pubblicazione
 
-| Ep. | Titolo | Step reale | Stato riprese | Stato montaggio | Pubblicato |
-|-----|--------|-----------|----------------|------------------|------------|
-| 0 | L'idea | — | da girare | da fare | no |
-| 1 | Il primo LED | Step 1 | da girare | da fare | no |
-| 2 | La batteria | Step 1 | da girare | da fare | no |
-| 3 | La dashboard nel browser | Step 1.1 | da girare | da fare | no |
-| 4 | OTA e i log | Step 1.1 | da scrivere | da fare | no |
-| 5 | Le prime frecce | Step 1.1 | da scrivere | da fare | no |
-| 6 | Cablaggio motore X e il primo driver morto | Step 2 | da scrivere | da fare | no |
-| 7 | La caccia al Vref | Step 2 | da scrivere | da fare | no |
-| 8 | Il mistero del wiggle | Step 2 | da scrivere | da fare | no |
-| 9 | La causa vera: l'alimentatore RGB | Step 2 | da scrivere | da fare | no |
-| 10 | Motore X vivo, poi il Y | Step 2 | da scrivere | da fare | no |
-| 11 | Perché arrendersi a un firmware pronto | Step 3 | da scrivere | da fare | no |
-| 12 | Installazione alla cieca | Step 3 | da scrivere | da fare | no |
-| 13 | La penna come asse | Step 3 | da scrivere | da fare | no |
-| 14 | Il primo quadrato | Step 3 | da scrivere | da fare | no |
-| 15 | Il calcolo resta nel browser | Step 4 | da scrivere | da fare | no |
-| 16 | Dall'SVG al foglio | Step 4 | da scrivere | da fare | no |
-| 17 | Il G-code ottimizzato | Step 4 | da scrivere | da fare | no |
-| 18 | Cremagliera o cinghia | Step 5 | da scrivere | da fare | no |
-| 19 | Il cuscinetto giusto | Step 5 | da scrivere | da fare | no |
-| 20 | Il primo pignone stampato | Step 5 | da scrivere | da fare | no |
-| 21 | Il carrello e le due guide | Step 5 | da scrivere | da fare | no |
-| 22 | Taratura e primo disegno vero | Step 5 | da scrivere | da fare | no |
+| Ep. | Titolo | Step reale | Codice di riferimento | Stato riprese | Stato montaggio | Pubblicato |
+|-----|--------|-----------|------------------------|----------------|------------------|------------|
+| 0 | L'idea | — | — | da girare | da fare | no |
+| 1 | Il primo LED | Step 1 | non recuperabile, [vedi nota](../firmware/archivio-storico/README.md#nota-sul-primissimo-test-ep-1--il-primo-led) | da girare | da fare | no |
+| 2 | La batteria | Step 1 | — (nessuna modifica firmware) | da girare | da fare | no |
+| 3 | La dashboard nel browser | Step 1.1 | [`01-dashboard-led-singolo.ino`](../firmware/archivio-storico/01-dashboard-led-singolo.ino) | da girare | da fare | no |
+| 4 | OTA e i log | Step 1.1 | [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino) | da scrivere | da fare | no |
+| 5 | Le prime frecce | Step 1.1 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da scrivere | da fare | no |
+| 6 | Cablaggio motore X e il primo driver morto | Step 2 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da scrivere | da fare | no |
+| 7 | La caccia al Vref | Step 2 | [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino) | da scrivere | da fare | no |
+| 8 | Il mistero del wiggle | Step 2 | [`08-dir-enable-spostati.ino`](../firmware/archivio-storico/08-dir-enable-spostati.ino) | da scrivere | da fare | no |
+| 9 | La causa vera: l'alimentatore RGB | Step 2 | [`10-test-pin-multimetro.ino`](../firmware/archivio-storico/10-test-pin-multimetro.ino) | da scrivere | da fare | no |
+| 10 | Motore X vivo, poi il Y | Step 2 | [`11-asse-y.ino`](../firmware/archivio-storico/11-asse-y.ino) | da scrivere | da fare | no |
+| 11 | Perché arrendersi a un firmware pronto | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 12 | Installazione alla cieca | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 13 | La penna come asse | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 14 | Il primo quadrato | Step 3 | [`gcode/test/`](../gcode/test/) | da scrivere | da fare | no |
+| 15 | Il calcolo resta nel browser | Step 4 | [`webui/`](../webui/) | da scrivere | da fare | no |
+| 16 | Dall'SVG al foglio | Step 4 | [`webui/js/svgimport.js`](../webui/js/svgimport.js), [`webui/js/paper.js`](../webui/js/paper.js) | da scrivere | da fare | no |
+| 17 | Il G-code ottimizzato | Step 4 | [`webui/js/optimize.js`](../webui/js/optimize.js), [`webui/js/gcode.js`](../webui/js/gcode.js) | da scrivere | da fare | no |
+| 18 | Cremagliera o cinghia | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
+| 19 | Il cuscinetto giusto | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
+| 20 | Il primo pignone stampato | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
+| 21 | Il carrello e le due guide | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
+| 22 | Taratura e primo disegno vero | Step 5 | [`14-servo-pen-lift.ino`](../firmware/archivio-storico/14-servo-pen-lift.ino) | da scrivere | da fare | no |
+
+Nota: i link puntano ai file nel repository (relativi a questa cartella `content/`) — cliccabili direttamente su GitHub.
 
 ---
 
@@ -69,6 +71,8 @@ Stile di riferimento: la serie di Giovanni Dapont sulla barchetta radiocomandata
 ## Ep. 1 — Il primo LED
 
 **Step reale corrispondente:** Step 1 (bring-up ESP32, test Blink su D2)
+
+**Codice di riferimento:** non recuperabile da git, [vedi nota nell'archivio storico](../firmware/archivio-storico/README.md#nota-sul-primissimo-test-ep-1--il-primo-led) — sketch Blink da ricreare (pinMode + digitalWrite in loop)
 
 **Girato:** ESP32 su breadboard, LED con resistenza 220 ohm, collegamento USB-C, caricamento sketch, primo lampeggio
 
@@ -105,6 +109,8 @@ Stile di riferimento: la serie di Giovanni Dapont sulla barchetta radiocomandata
 ## Ep. 3 — La dashboard nel browser
 
 **Step reale corrispondente:** Step 1.1 (dashboard web sull'ESP32, WebServer.h, mDNS, tab Wi-Fi)
+
+**Codice di riferimento:** [`01-dashboard-led-singolo.ino`](../firmware/archivio-storico/01-dashboard-led-singolo.ino)
 
 **Girato:** schermo del browser che raggiunge la dashboard, provisioning Wi-Fi dalla tab dedicata, pulsante che accende/spegne il LED, eventuale ripresa di `cnc2d.local` digitato nella barra degli indirizzi
 
