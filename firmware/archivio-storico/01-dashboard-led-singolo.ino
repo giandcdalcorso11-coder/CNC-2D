@@ -1,0 +1,249 @@
+// CNC-2D — Dashboard web ESP32 (Step 1: LED su D2 + configurazione Wi-Fi via web)
+//
+// Librerie usate: tutte incluse nel core ESP32 per Arduino (nessuna installazione extra):
+// WiFi.h, WebServer.h, Preferences.h, ESPmDNS.h
+//
+// Comportamento al boot:
+// - Se sono salvate credenziali Wi-Fi valide, si connette alla rete di casa (modalità STA)
+//   ed è raggiungibile su http://cnc2d.local oppure sull'IP mostrato sul Serial Monitor.
+// - Se non ci sono credenziali salvate, o la connessione fallisce, apre un Access Point
+//   di emergenza (SSID/PASS sotto) su cui è comunque raggiungibile la stessa pagina,
+//   per poter impostare/correggere le credenziali dalla tab Wi-Fi.
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include <ESPmDNS.h>
+
+#define LED_PIN 2
+#define WIFI_CONNECT_TIMEOUT_MS 15000
+
+const char* AP_SSID = "CNC-2D-Setup";
+const char* AP_PASS = "cnc2d2026";
+
+Preferences prefs;
+WebServer server(80);
+
+bool ledState = false;
+bool apMode = false;
+
+const char PAGE_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNC-2D Dashboard</title>
+<style>
+  :root{--bg:#111;--panel:#1b1b1f;--accent:#3b82f6;--text:#eee;--muted:#999;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px;text-align:center;border-bottom:1px solid #222;}
+  h1{margin:0;font-size:1.2rem;}
+  .tabs{display:flex;justify-content:center;gap:8px;padding:12px;}
+  .tab-btn{background:var(--panel);border:1px solid #333;color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;}
+  .tab-btn.active{background:var(--accent);border-color:var(--accent);}
+  .tab-content{display:none;max-width:420px;margin:0 auto;padding:16px;}
+  .tab-content.active{display:block;}
+  .pad{display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:64px 64px 64px;gap:8px;justify-content:center;margin:24px auto;}
+  .pad button{font-size:1.4rem;border-radius:12px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
+  .pad button:active{background:#2a2a30;}
+  #btn-up{grid-column:2;grid-row:1;}
+  #btn-left{grid-column:1;grid-row:2;}
+  #btn-center{grid-column:2;grid-row:2;font-weight:bold;}
+  #btn-center.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
+  #btn-right{grid-column:3;grid-row:2;}
+  #btn-down{grid-column:2;grid-row:3;}
+  .status{text-align:center;color:var(--muted);font-size:.9rem;margin-top:8px;}
+  form label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
+  input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
+  button.primary{margin-top:16px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:1rem;cursor:pointer;}
+  .info{background:var(--panel);border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;}
+  .msg{margin-top:12px;font-size:.9rem;text-align:center;}
+  .placeholder{color:var(--muted);text-align:center;padding:32px 0;}
+</style>
+</head>
+<body>
+<header><h1>CNC-2D &mdash; Pannello di controllo</h1></header>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="controllo">Controllo</button>
+  <button class="tab-btn" data-tab="wifi">Wi-Fi</button>
+  <button class="tab-btn" data-tab="codice">Codice</button>
+</div>
+
+<section id="controllo" class="tab-content active">
+  <div class="pad">
+    <button id="btn-up" onclick="arrowPress('up')">&uarr;</button>
+    <button id="btn-left" onclick="arrowPress('left')">&larr;</button>
+    <button id="btn-center" onclick="toggleLed()">LED</button>
+    <button id="btn-right" onclick="arrowPress('right')">&rarr;</button>
+    <button id="btn-down" onclick="arrowPress('down')">&darr;</button>
+  </div>
+  <p class="status" id="led-status">Stato LED: --</p>
+</section>
+
+<section id="wifi" class="tab-content">
+  <div class="info" id="wifi-info">Caricamento stato rete...</div>
+  <form id="wifi-form">
+    <label>Nome rete (SSID)</label>
+    <input type="text" id="ssid" placeholder="Nome rete Wi-Fi" required>
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Nuova password">
+    <button type="submit" class="primary">Salva e riavvia</button>
+  </form>
+  <p class="msg" id="wifi-msg"></p>
+</section>
+
+<section id="codice" class="tab-content">
+  <div class="placeholder">
+    Caricamento G-code via web: disponibile dopo il test di motori e servo (Step 2-3 della pipeline).
+  </div>
+</section>
+
+<script>
+function $(id){return document.getElementById(id);}
+
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+    document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+    btn.classList.add('active');
+    $(btn.dataset.tab).classList.add('active');
+  });
+});
+
+function arrowPress(dir){
+  // Placeholder: nessuna azione finché i motori non sono collegati.
+  console.log('arrow', dir);
+}
+
+function refreshState(){
+  fetch('/api/state').then(function(r){return r.json();}).then(function(s){
+    $('led-status').textContent = 'Stato LED: ' + (s.led ? 'ACCESO' : 'SPENTO');
+    $('btn-center').classList.toggle('on', s.led);
+    $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
+  }).catch(function(){});
+}
+
+function toggleLed(){
+  fetch('/api/led/toggle').then(function(r){return r.json();}).then(function(s){
+    $('led-status').textContent = 'Stato LED: ' + (s.led ? 'ACCESO' : 'SPENTO');
+    $('btn-center').classList.toggle('on', s.led);
+  });
+}
+
+$('wifi-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var ssid = $('ssid').value;
+  var password = $('password').value;
+  $('wifi-msg').textContent = 'Salvataggio in corso...';
+  fetch('/api/wifi/save', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'ssid=' + encodeURIComponent(ssid) + '&password=' + encodeURIComponent(password)
+  }).then(function(r){return r.text();}).then(function(t){
+    $('wifi-msg').textContent = t + ' Il dispositivo si riavvierà tra pochi secondi.';
+  }).catch(function(){
+    $('wifi-msg').textContent = 'Errore di rete durante il salvataggio.';
+  });
+});
+
+refreshState();
+setInterval(refreshState, 4000);
+</script>
+</body>
+</html>
+)rawliteral";
+
+void sendStateJson() {
+  String json = "{\"led\":" + String(ledState ? "true" : "false") +
+                ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
+                ",\"ssid\":\"" + (apMode ? String(AP_SSID) : WiFi.SSID()) + "\"" +
+                ",\"ip\":\"" + (apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString()) + "\"}";
+  server.send(200, "application/json", json);
+}
+
+void handleRoot() {
+  server.send_P(200, "text/html", PAGE_HTML);
+}
+
+void handleLedToggle() {
+  ledState = !ledState;
+  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+  sendStateJson();
+}
+
+void handleState() {
+  sendStateJson();
+}
+
+void handleWifiSave() {
+  String ssid = server.arg("ssid");
+  String password = server.arg("password");
+  if (ssid.length() == 0) {
+    server.send(400, "text/plain", "SSID richiesto.");
+    return;
+  }
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", password);
+  server.send(200, "text/plain", "Credenziali salvate.");
+  delay(500);
+  ESP.restart();
+}
+
+void handleNotFound() {
+  server.send(404, "text/plain", "Non trovato");
+}
+
+bool connectToWifi(const String& ssid, const String& password) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+    delay(250);
+  }
+  return WiFi.status() == WL_CONNECTED;
+}
+
+void startSetupAP() {
+  apMode = true;
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  prefs.begin("wifi_cfg", false);
+  String savedSsid = prefs.getString("ssid", "");
+  String savedPass = prefs.getString("pass", "");
+
+  if (savedSsid.length() > 0 && connectToWifi(savedSsid, savedPass)) {
+    apMode = false;
+    Serial.print("Connesso. IP: ");
+    Serial.println(WiFi.localIP());
+    if (MDNS.begin("cnc2d")) {
+      Serial.println("mDNS attivo: http://cnc2d.local");
+    }
+  } else {
+    Serial.println("Connessione Wi-Fi fallita o non configurata. Avvio modalita' configurazione.");
+    startSetupAP();
+    Serial.print("Connettiti alla rete '");
+    Serial.print(AP_SSID);
+    Serial.print("' e apri http://");
+    Serial.println(WiFi.softAPIP());
+  }
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/api/led/toggle", HTTP_GET, handleLedToggle);
+  server.on("/api/state", HTTP_GET, handleState);
+  server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
+  server.onNotFound(handleNotFound);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
