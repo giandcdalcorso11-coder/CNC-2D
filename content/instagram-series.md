@@ -25,10 +25,10 @@ Stile di riferimento: la serie di Giovanni Dapont sulla barchetta radiocomandata
 | 1 | Il primo LED | Step 1 | non recuperabile, [vedi nota](../firmware/archivio-storico/README.md#nota-sul-primissimo-test-ep-1--il-primo-led) | da girare | da fare | no |
 | 2 | La batteria | Step 1 | — (nessuna modifica firmware) | da girare | da fare | no |
 | 3 | La dashboard nel browser | Step 1.1 | [`01-dashboard-led-singolo.ino`](../firmware/archivio-storico/01-dashboard-led-singolo.ino) | da girare | da fare | no |
-| 4 | OTA e i log | Step 1.1 | [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino) | da scrivere | da fare | no |
-| 5 | Le prime frecce | Step 1.1 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da scrivere | da fare | no |
-| 6 | Cablaggio motore X e il primo driver morto | Step 2 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da scrivere | da fare | no |
-| 7 | La caccia al Vref | Step 2 | [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino) | da scrivere | da fare | no |
+| 4 | OTA e i log | Step 1.1 | [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino) | da girare | da fare | no |
+| 5 | Le prime frecce | Step 1.1 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
+| 6 | Cablaggio motore X e il primo driver morto | Step 2 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
+| 7 | La caccia al Vref | Step 2 | [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino) | da girare | da fare | no |
 | 8 | Il mistero del wiggle | Step 2 | [`08-dir-enable-spostati.ino`](../firmware/archivio-storico/08-dir-enable-spostati.ino) | da scrivere | da fare | no |
 | 9 | La causa vera: l'alimentatore RGB | Step 2 | [`10-test-pin-multimetro.ino`](../firmware/archivio-storico/10-test-pin-multimetro.ino) | da scrivere | da fare | no |
 | 10 | Motore X vivo, poi il Y | Step 2 | [`11-asse-y.ino`](../firmware/archivio-storico/11-asse-y.ino) | da scrivere | da fare | no |
@@ -123,6 +123,87 @@ Nota: i link puntano ai file nel repository (relativi a questa cartella `content
 > Le frecce che vedete già in pagina non fanno ancora nulla — sono lì in previsione dei motori. Prossimo episodio: farle funzionare per davvero."
 
 **Testo overlay suggerito:** "Step 1 — Una pagina, nessun cavo"
+
+---
+
+## Ep. 4 — OTA e i log
+
+**Step reale corrispondente:** Step 1.1 (ArduinoOTA, tab Log come sostituto del Serial Monitor)
+
+**Codice di riferimento:** [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino)
+
+**Girato:** upload via USB dell'ultima volta, poi ESP32 scollegato dal PC; una modifica al codice caricata da browser via OTA; tab "Log" della dashboard che scorre messaggi in tempo reale
+
+**Voice over (bozza):**
+
+> "Ogni volta che cambiavo anche una riga di codice dovevo staccare la macchina, portarla al PC, ricollegare il cavo USB. Scomodo, e destinato a diventare impossibile quando la macchina sarà montata e lontana dalla scrivania.
+> La soluzione si chiama OTA — aggiornamento del firmware via Wi-Fi. Il primo caricamento resta via cavo, ma da lì in poi basta il browser.
+> C'è un prezzo da pagare, però: senza cavo USB collegato, sparisce anche il Serial Monitor — il modo normale per vedere cosa succede dentro alla scheda mentre gira.
+> [tab Log] Quindi ho aggiunto una tab nella dashboard che mostra in tempo reale gli stessi messaggi che prima vedevo solo da cavo.
+> Ora la macchina è davvero autonoma: nessun cavo per aggiornarla, nessun cavo per capire cosa sta pensando. Prossimo passo: farla muovere sul serio."
+
+**Testo overlay suggerito:** "Step 1 — Nessun cavo, neanche per guardarci dentro"
+
+---
+
+## Ep. 5 — Le prime frecce
+
+**Step reale corrispondente:** Step 1.1 (motore X collegato alle frecce, coda di passi non bloccante)
+
+**Codice di riferimento:** [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino)
+
+**Girato:** driver A4988 e motore X cablati sulla breadboard, click sulla freccia nella dashboard, motore che scatta di un passo; pressione prolungata sulla freccia con reazione incerta del motore
+
+**Voice over (bozza):**
+
+> "Le frecce erano già nella dashboard da un po' — decorazione, in attesa dei motori. Oggi le collego davvero: un driver A4988, un motore NEMA17, e un pin STEP che dice al motore quando muoversi.
+> [click singolo] Un click, un passo pulito. Funziona.
+> Ma il primo tentativo di farlo girare in modo continuo dentro la richiesta web blocca tutto il server per secondi — l'OTA, il log, tutto affamato mentre il motore gira.
+> La soluzione è spostare il movimento fuori dalla richiesta: una coda di passi che viene svuotata nel ciclo principale, non dentro l'handler HTTP.
+> [pressione prolungata] Click singolo perfetto. Pressione prolungata... qualcosa non torna ancora. E lì iniziano i problemi veri."
+
+**Testo overlay suggerito:** "Step 1 — Le frecce prendono vita"
+
+---
+
+## Ep. 6 — Cablaggio motore X e il primo driver morto
+
+**Step reale corrispondente:** Step 2 (primo A4988 non muove il motore)
+
+**Codice di riferimento:** [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino)
+
+**Girato:** cablaggio completo driver+motore ripreso da vicino, pulsante "Giro completo" premuto, motore fermo con solo un leggero ronzio, albero bloccato al tatto; sostituzione del modulo A4988
+
+**Voice over (bozza):**
+
+> "Cablaggio finito, motore collegato, driver alimentato. Provo 'Giro completo' dalla dashboard.
+> [pausa, ronzio] Niente. Solo un leggero ronzio, e l'albero bloccato con forza al tatto — che in teoria è normale per uno stepper abilitato, ma da solo non mi dice nulla.
+> Controllo tutto: continuità su STEP, DIR, ENABLE, VDD, RESET, VMOT, GND. Tutto corretto sulla carta.
+> L'unico sospetto che resta è il chip stesso — danneggiato, probabilmente durante le prove di cablaggio sotto tensione.
+> [sostituzione modulo] Monto il secondo driver di scorta.
+> [test] Si muove. Parzialmente. E quella parola, 'parzialmente', è esattamente il problema che mi porto nel prossimo episodio."
+
+**Testo overlay suggerito:** "Step 2 — Il primo driver non ce l'ha fatta"
+
+---
+
+## Ep. 7 — La caccia al Vref
+
+**Step reale corrispondente:** Step 2 (Vref bloccato a 0,20V, misura instabile col motore collegato)
+
+**Codice di riferimento:** [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino)
+
+**Girato:** multimetro sul trimmer del driver, tentativo di regolazione, valore fermo a 0,20V; motore scollegato, nuova misura, taratura riuscita a 0,55V
+
+**Voice over (bozza):**
+
+> "Il driver ha un piccolo trimmer che regola quanta corrente manda al motore — il Vref. Per il mio motore il valore giusto è intorno a 0,55V.
+> [misura] Il multimetro dice 0,20V. Giro il trimmer. Ancora 0,20V. Come se non facesse nulla.
+> Il sospetto naturale è che il potenziometro sia rotto. Ma prima di sostituire un altro pezzo, provo una cosa: stacco il motore e misuro di nuovo, a vuoto.
+> [misura a vuoto] 0,55V, esattamente il target. Il problema non era il trimmer — era il motore collegato che introduceva rumore sulla misura stessa.
+> Vref tarato, motore ricollegato. Ma il movimento resta a scatti — Vref giusto non basta ancora."
+
+**Testo overlay suggerito:** "Step 2 — Il trimmer 'rotto' che non lo era"
 
 ---
 
