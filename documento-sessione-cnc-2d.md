@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 14
-**Ultimo aggiornamento:** 2026-09-26 18:46
+**Versione:** 15
+**Ultimo aggiornamento:** 2026-09-27 17:32
 
 ## Regole di co-editing
 
@@ -174,7 +174,7 @@ Macchina CNC 2D per disegno/plotter, con:
 
 **Stato:** in corso (progettazione)
 
-**Obiettivo:** struttura a portale che porta la penna su tutta l'area di un foglio A5, con i due assi motorizzati e il pen-lift solidale al carrello X
+**Obiettivo:** struttura a portale che porta la penna su tutta l'area di un foglio A4 in orizzontale, con i due assi motorizzati e il pen-lift solidale al carrello Y
 
 **Decisioni progettuali:**
 - **Trasmissione a cremagliera e pignone**, non a cinghia. Motivo: si stampa in 3D a costo quasi nullo, mentre le cinghie richiedono cinghia, pulegge e tenditori acquistati. Alternativa scartata: cinghia GT2, che avrebbe gioco quasi nullo e motori fissi — resta la via di ripiego se il gioco della cremagliera risultasse ingestibile, e non richiederebbe di rifare la struttura ma solo i supporti dei motori
@@ -189,7 +189,7 @@ Macchina CNC 2D per disegno/plotter, con:
 - **Una guida comanda, l'altra sostiene** (vale sull'asse Y, dove le guide restano due pezzi separati). La maestra vincola quota verticale, beccheggio, posizione laterale e imbardata; la secondaria vincola solo il rollio e resta libera lateralmente. Due guide montate a mano sul legno non sono mai parallele entro un decimo, e se entrambe vincolassero il laterale quell'errore diventerebbe attrito variabile lungo la corsa — il tipo di errore che non si riesce nemmeno a compensare
 - **Un eccentrico per carrello**, sul cuscinetto laterale di contrasto: stampando non si azzecca mai il gioco al primo colpo. Il gioco verticale si regola invece con le asole dei profili superiori, che agiscono su tutta la lunghezza in una volta sola
 - **Motore, pignone con cremagliera e cuscinetti occupano bande laterali distinte.** Il corpo del motore è 42 mm e scende quindi 21 mm sotto l'asse, mentre la cremagliera arriva a 15 mm sotto: si sovrappongono in altezza e devono per forza stare affiancati. Circa 110 mm di larghezza complessiva del carrello. Conseguenza: la flangia di fissaggio della cremagliera va su un lato solo, quello opposto al motore
-- **Formato massimo A5**, corse utili 200 mm su X e 300 mm su Y. Un portale corto riduce anche la tendenza del ponte a mettersi di traverso, essendo spinto da un lato solo
+- **Formato A4 in orizzontale**, corsa X ~230 mm (cremagliera da 59 denti, corsa utile ~250) e corsa Y ~317 mm. Supera il formato A5 del 2026-09-21: l'A4 in orizzontale copre l'A4 senza bisogno della corsa X da 317, perché il disegno si ruota di 90° nel software. Il vincolo che teneva la macchina piccola era la massa mobile, e si è rivelato inesistente (tetto 3410 g contro ~1150 stimati). Impostazione precedente: formato massimo A5, corse utili 200 mm su X e 300 mm su Y; un portale corto riduce anche la tendenza del ponte a mettersi di traverso, essendo spinto da un lato solo
 - **Ponte in alluminio rigido**: un ponte che non flette non può sbandare
 - **Base in compensato da 10 mm, 385 × 455 mm** (acquistata). Rigida e pesante: la massa assorbe le vibrazioni invece di trasmetterle alla penna. Supera l'indicazione precedente dell'MDF da 15-18 mm, scelta prima di sapere cosa si trovasse
 - **Ogni millimetro di lunghezza del carrello è un millimetro di corsa in meno**, mentre la larghezza trasversale non costa corsa. Le due dimensioni vanno quindi trattate in modo diverso: stringere in larghezza quanto si vuole, non accorciare lungo la corsa per guadagnare foglio che non serve
@@ -230,16 +230,115 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-26] **Leve in riserva se la coppia risulta stretta**, in ordine di convenienza: (1) togliere massa, che agisce su entrambi i termini; (2) accelerazione da 1000 a 400 mm/s², che restituisce 0,9 N di budget attrito e si paga solo in tempo; (3) pignone z17 invece di z20 — **+18% di forza e risoluzione da 33,95 a 39,9 passi/mm, con la stessa cremagliera** perché dipende solo dal modulo, al costo di rifare la catena delle quote (l'asse scende di 2,25 mm); (4) motore da 40 mm, che triplica la coppia per ~10 € e +140 g
 - [2026-09-26] **La massa punisce due volte** (aumenta insieme l'attrito e la forza per accelerare), quindi il test della calamita sui profili pesa più di quanto sembri: la trave da 385 mm vale 174 g in alluminio contro 506 in acciaio, cioè **circa due gradi** di angolo ammesso in meno
 
-**Problemi aperti su questo step (al 2026-09-26):**
+- [2026-09-27] **Carrello X completo misurato:** angolo di distacco ~10°, moto costante su tutta la corsa ~15°, massa 290 g. Tradotto in forza sono **0,50 N e 0,76 N** contro i 4,42 N disponibili al pignone: margine 5,8×. Il μ apparente di 0,27 non descrive un attrito grande, descrive un attrito piccolo diviso per un peso ancora più piccolo
+- [2026-09-27] **Il drag è attrito interno dei cuscinetti, quindi costante e non proporzionale al carico.** Otto 608ZZ con coppia di spunto 0,3÷1,0 mN·m su raggio 11 danno 0,25÷0,83 N, che copre esattamente il misurato. Conseguenza operativa: **caricando il portale il μ effettivo scende**, perché il numeratore resta fermo e il denominatore cresce. A 1,1 kg totali il μ scende da 0,27 a ~0,082
+- [2026-09-27] **Test della calamita fatto: i profili NON sono magnetici, quindi alluminio.** 452 g/m sulla sezione a cappello (167 mm²), contro i 1314 g/m che avrebbe l'acciaio. Chiude il punto aperto dal 2026-09-25
+- [2026-09-27] **Il tetto di massa mobile non è più un vincolo di progetto.** Con drag da rotolamento (μ 0,05) il tetto è 3410 g a 0,6 A contro i ~1150 g stimati per la macchina completa. Fra il formato più piccolo e il più grande in tabella ballavano 84 g: la massa ha smesso di essere il criterio di scelta del formato
+- [2026-09-27] **Cremagliera v2 controllata sullo STEP, tre difetti trovati e corretti in v3.** (a) Due fori Ø8 passanti dall'alto tagliavano la dentatura fino in testa: a Y=0 mancavano due denti interi a X≈14 (salto di 11,551 invece di 4,712) e uno a X≈256, con la fascia portante che crollava da 17,32 a 9,32 mm; (b) restavano due schegge di dente spesse **0,030 mm**, sotto la larghezza dell'ugello, che sarebbero diventate bave dentro un vano; (c) il Ø2,5 passante avrebbe autofilettato nel PLA impedendo il serraggio, e il cono si apriva solo a Ø4,5, troppo poco per una testa svasata M3
+- [2026-09-27] **Cremagliera v3 verificata pulita:** 59 denti, tutti spessi 2,1562 sulla primitiva, tutti i passi 4,7124, nessuna anomalia. Profilo confermato al centesimo a sette altezze (testa 1,0643, primitiva 2,1562, piede 3,5211, pendenza fianco 2·tan20° = 0,728). **Chevron simmetrico a ogni altezza di fascia**: le coppie ±Y danno posizioni identiche fino all'ultima cifra. Lunghezza 284,223 = 60,314 passi, avanzo 1,480 — da portare a **282,743** (60 passi esatti) perché il pezzo resti giuntabile in futuro
+- [2026-09-27] **Il rettangolo ruotato a 45° sul piatto è davvero l'ottimo**, verificato: con piatto 256 e larghezza 60 il massimo è 302,04 mm esatti a 45°. Dettaglio controintuitivo da ricordare allo slicer: **ruotare poco peggiora**, fra 5° e 25° l'ingombro ammesso scende sotto i 256 mm che si avrebbero a 0°. O si va a 45 o non si ruota
+- [2026-09-27] **Il riempimento non raggiunge mai i denti.** Con ugello 0,4 e 4 perimetri il dente è pieno ovunque (2,52 mm di pareti contro 2,156 di spessore sulla primitiva). Il pattern influenza solo la soletta, che regge 4,4 N su 11 viti: la scelta va fatta sulla **stabilità dimensionale**, non sulla resistenza
+- [2026-09-27] **Altezza del pignone ricavata dal carrello:** i fori NEMA sono a Z 58,650 con interasse 31,00 verificato, quindi **asse pignone Z 74,150**, primitiva cremagliera Z 59,150, faccia inferiore della cremagliera Z 47,275. Equazione di vincolo della catena verticale: **D = t_binario + 59,150 − t_cremagliera**, dove D è la distanza dalla faccia inferiore della cremagliera alla primitiva (oggi 11,875). Da confermare sul pezzo reale: l'asse del motore deve venire a filo del cielo del carrello, che in CAD sta a Z 74,159
+- [2026-09-27] **La catena delle quote non chiude sui nominali, e va chiusa in montaggio.** Sensibilità: 1 mm di errore in altezza = 0,728 mm di gioco, quindi il budget è ±0,275 mm. Le tolleranze reali sommano ±0,60 mm col multistrato e ±0,89 col massello — due e tre volte il budget. I contributi: taglio del legno ±0,30, **planarità del riporto su 284 mm ±0,50**, movimento stagionale ±0,05 (multistrato di costa) contro ±0,66 (massello di costa), stampa ±0,10, alluminio ±0,10
+- [2026-09-27] **Il regolatore della catena verticale sono i fori Ø4,0 del motore con viti M3**: ±0,5 mm di gioco radiale, cioè ±0,364 mm di gioco d'ingranamento. Basta ad assorbire tutto quello che resta dopo aver misurato il legno
+- [2026-09-27] **Architettura dell'asse Y aperta.** Frequenze proprie della trave da 437 mm con 430 g al centro: **145 Hz in verticale, 388 Hz in orizzontale** (la direzione di corsa è quella larga del profilo). Freccia 0,013 mm, e comunque **la freccia non tocca l'ingranamento** perché cremagliera e pignone stanno entrambi sulla trave e scendono insieme. La rigidezza non è un criterio di scelta del profilo
+- [2026-09-27] **Il piano di simmetria della sezione azzera due errori su tre.** Con penna e pignone sull'asse dell'anima, l'imbardata non sposta la punta (una rotazione non muove ciò che sta sull'asse) e la torsione è nulla per definizione (forza sul piano di simmetria). Fuori asse si paga doppio: a 150 mm di offset sono 0,250 mm di imbardata **più** 0,209 di torsione della trave, contro uno spessore di tratto di 0,3÷0,5 mm
+- [2026-09-27] **Il motore non deve contendere lo spazio alla penna nella sezione: può essere sfalsato lungo la corsa.** In sezione si sovrappongono, in pianta stanno a 40÷60 mm di distanza. Così penna, pignone e cremagliera restano tutti sul piano di simmetria
+- [2026-09-27] **Un perno stampato non si può ingrossare fra due cuscinetti coassiali**, perché il cuscinetto interno si infila dalla punta e non passerebbe. La soluzione è quella già usata sull'asse X: **due tronchetti contrapposti**, uno per cuscinetto, radicati ciascuno nella propria parete. Lunghezza 8÷10 mm invece di 30, e la freccia scende col cubo: da 0,0149 a 0,0004 mm. Se invece il perno deve restare passante, va tenuto Ø8 pieno e **appoggiato a entrambe le pareti** (0,0009 mm contro 0,0149 a sbalzo, 16× in rigidezza e 4× in resistenza)
+- [2026-09-27] **La resistenza dei perni stampati non è mai stata il problema:** un Ø8 a sbalzo su 30 mm rompe a 84 N e ne porta 1, coefficiente 84×. Il motivo per irrigidirli è lo **scorrimento viscoso**: il PLA sotto carico permanente triplica la freccia in un anno, quindi 0,045 mm che si presentano da soli come gioco sul labbro
+- [2026-09-27] **Il profilo a cappello dell'asse X non è riutilizzabile sull'asse Y** con la conformazione scelta: è una C con le punte che formano un pezzo esterno, e i cuscinetti non possono fare il giro necessario. Cade l'ipotesi di riusare lo stesso profilo su entrambi gli assi
+
+**Problemi aperti su questo step (al 2026-09-27):**
 - ~~Profondità del vano motore da verificare~~ — **risolto il 2026-09-26.** Il motore è un **pancake da 23,1 mm**, non un NEMA 17 standard da 34÷48: il vano da 23,5 mm è quindi corretto e le viti posteriori arrivano eccome al coperchio. Resta però **0,4 mm di gioco assiale**, che è più dei ±0,17 mm di tolleranza di centraggio della doppia elica: il motore va messo **in battuta sulla parete anteriore** (che è il riferimento della quota del pignone) con **due rondelle piane M3 da 0,5 mm** fra coperchio posteriore e parete posteriore, così le viti di dietro lo spingono in avanti invece di tirarlo indietro. Resta da verificare la profondità dei fori filettati posteriori (spesso 4÷5 mm) per scegliere la lunghezza delle viti
+- ~~Test della calamita sui profili~~ — **risolto il 2026-09-27: alluminio**, 452 g/m. Toglie di mezzo il rischio peggiore sul peso del portale
+- ~~Attrito del carrello completo da caratterizzare~~ — **risolto il 2026-09-27.** 10° di distacco, 15° di moto costante, e la causa è attrito interno dei cuscinetti (costante), non strisciamento (proporzionale). Il carrello è accettabile così com'è
+- **Misurare il legno prima di stampare la cremagliera definitiva.** Il listello grande e i listelli da 8 vanno misurati col calibro in cinque punti, poi si imposta `D = t_binario + 59,150 − t_cremagliera` e si stampa. **La cremagliera si stampa dopo che il legno è in casa, non prima.** Se la dispersione fra i cinque punti supera 0,27 mm il riporto è imbarcato e va spianato, oppure si passa al piano B
+- **Piano B se il legno esce storto:** buttare il riporto e appendere la cremagliera a **staffe stampate fissate al binario**. Una nervatura da 10 mm che sale 36 mm si flette di 0,002 mm sotto la forza di separazione. Vantaggio concettuale: la cremagliera verrebbe riferita al binario, cioè allo stesso pezzo su cui corre il pignone, invece che al tavolo
 - **Parallelismo cremagliera-binario entro 0,17 mm su tutta la corsa.** Conseguenza della doppia elica: se la cremagliera non è parallela al binario nella direzione della larghezza, il centraggio del pignone sull'apice deriva mentre il carrello avanza. Su 400 mm di corsa significa 0,024°. Va allineata **al binario**, non al bordo della base: far scorrere il carrello e controllare la distanza pignone-apice in quattro o cinque punti prima di fissare. Sintomo caratteristico di un errore: scorre bene in mezzo e si irrigidisce verso le estremità
-- **Interferenza geometrica fra cremagliera e fianco del carrello.** La cremagliera è larga 15,588 e va centrata sull'apice, cioè sull'asse del pignone; il carrello arriva a X −38,006. Vincolo: `X asse pignone ≤ −46,8`. Con l'asse a −45 (pignone a 1 mm dal fianco) il bordo interno della cremagliera cadrebbe 0,8 mm dentro il fianco, e i due pezzi si sfiorano in una fascia di soli 7 mm in altezza — il tipo di interferenza che in sezione non si vede
-- **L'asse Y non deve scaricarsi sul motore.** La carcassa del motore è l'oggetto che posiziona il pignone: qualunque carico strutturale che la attraversa si scarica sulla profondità di ingranamento, e il momento d'inerzia del ponte la modulerebbe a ogni inversione. Le quattro viti dedicate all'asse Y vanno nella struttura del carrello — i fianchi da 3 mm e il ponte a Z 52 — non nei fori del motore
-- **Quanto alzare il piano del foglio**, che dipende da due numeri ancora da fissare: dove starà il binario rispetto al foglio e a che quota sarà il sottotrave del ponte
-- **Test della calamita sui profili** (acciaio o alluminio): ancora da fare. Incide sul peso del ponte, 1,35 kg/m contro 465 g/m, e sulla flessione del labbro sotto la ruota, 0,10 mm in alluminio contro 0,035 in acciaio a pari carico
-- **Gioco della pinza con il carrello completo**: misurato e validato con mezzo carrello, da rifare con entrambi i lati montati. Se si irrigidisce in un punto della corsa non è la stampa ma la complanarità dei due labbri, e la cura è portare l'interasse dei 608 da 23,40 a 23,50
+- **Interferenza geometrica fra cremagliera e fianco del carrello.** Vincolo: `X asse pignone ≤ −46,8`. Con l'asse a −45 (pignone a 1 mm dal fianco) il bordo interno della cremagliera cadrebbe 0,8 mm dentro il fianco, e i due pezzi si sfiorano in una fascia di soli 7 mm in altezza — il tipo di interferenza che in sezione non si vede. **Da ricalcolare sulla v3**, che è larga 38,66 con la flangia tutta da un lato
+- **Gioco della pinza con il carrello completo**: se si irrigidisce in un punto della corsa non è la stampa ma la complanarità dei due labbri, e la cura è portare l'interasse dei 608 da 23,40 a 23,50
+- **Quanto alzare il piano del foglio**, che resta bloccato sul disegno dell'asse Y: serve la quota del sottotrave del ponte
+- **Profilo della trave Y da comprare.** Serve una **T con un lato allungato** (o due angolari schiena contro schiena, che danno una T con anima doppia e sono molto più comuni). Quote: ala 40÷50 mm (minimo assoluto 27 = 2×(7 cuscinetto + 2 aria + 3 parete) + anima), spessore ala 2÷4 mm, anima sporgente 30÷40 mm e spessa 3÷4, fori Ø≥4,5 a passo ≤50 mm, lunghezza ≥450. Interasse dei perni = **22 + spessore ala + 0,20**. **La misura che conta non è la rigidezza ma la costanza dello spessore dell'ala**: la variazione misurata su cinque punti è il gioco minimo che si è costretti a disegnare
+- **Layout del carrello Y da chiudere**, con l'ordine di progetto ribaltato rispetto all'asse X: prima la punta della penna, poi i cuscinetti, poi il motore, e **la cremagliera per ultima** — perché sull'asse Y la sua posizione è libera, non imposta da un carrello preesistente
 
 ## Storico sessioni
+
+### [2026-09-27 17:32] (meccanica) Carrello completo misurato, falso allarme sullo strisciamento, cremagliera chiusa e apertura dell'asse Y
+
+**Riepilogo:** Il carrello X completo scorre e l'attrito che sembrava strisciamento si è rivelato attrito interno dei cuscinetti — cioè costante, quindi destinato a migliorare sotto carico — e con la massa che smette di essere un vincolo il formato sale ad A4 orizzontale; la cremagliera arriva a una versione geometricamente corretta dopo tre difetti trovati sullo STEP, e si apre l'asse Y con due principi che hanno già riscritto lo sketch.
+
+**Cosa è stato fatto:**
+
+- **Carrello X completo stampato e assemblato.** 290 g, distacco ~10°, moto costante ~15°. In forza sono 0,50 e 0,76 N contro 4,42 disponibili: margine 5,8×
+- **Test della calamita**: profili non magnetici, quindi alluminio a 452 g/m invece dei 1314 dell'acciaio
+- **Controllo dello STEP della cremagliera v2**, tre difetti trovati, e **verifica della v3** che li ha chiusi tutti: 59 denti tutti a 2,1562 sulla primitiva, tutti i passi a 4,7124, chevron simmetrico a ogni altezza di fascia fino all'ultima cifra
+- **Ricostruita la catena verticale** dal carrello: asse pignone Z 74,150, primitiva Z 59,150, e l'equazione `D = t_binario + 59,150 − t_cremagliera` che lega le due quote di legno allo spessore stampato
+- **Analisi delle tolleranze della catena verticale**, che ha ribaltato una raccomandazione data poche ore prima (vedi sotto)
+- **Aperta la progettazione dell'asse Y**: quattro sketch discussi (1, 1.1, 1.2, 2), scritta la specifica del profilo da comprare, e calcolate frequenze proprie (145 Hz verticale, 388 orizzontale) e contributi d'errore del carrello
+
+**Bug: l'attrito del carrello scambiato per strisciamento**
+
+**Sintomo:** angolo di distacco 10° e moto costante 15° su un carrello da 290 g, cioè μ apparente 0,18÷0,27 contro lo 0,01÷0,02 che darebbero dei cuscinetti a sfere. Un test con 300 g aggiunti non ha fatto scendere l'angolo, il che indicava attrito **proporzionale al carico**, cioè radente.
+**Causa:** nessun meccanismo di strisciamento esisteva davvero. La verifica diretta — far girare a dito tutti e 12 i cuscinetti e cercare contatti del PLA sul binario — li ha trovati tutti liberi e nessun contatto. Il drag è **attrito interno dei cuscinetti**: otto 608ZZ con coppia di spunto 0,3÷1,0 mN·m su raggio 11 danno 0,25÷0,83 N, che copre esattamente i 0,50÷0,76 misurati. Il test con i 300 g era l'unica misura fatta a occhio su una differenza sottile (15° contro ~8°) ed è stato battuto da un'osservazione binaria.
+**Fix applicato:** nessuna modifica al pezzo — il carrello va bene com'è. Cambia l'interpretazione: essendo il drag **costante e non proporzionale**, caricando il portale il μ effettivo **scende** (da 0,27 a ~0,082 a 1,1 kg totali) invece di restare. Metodo migliore per una prossima verifica: tirare il carrello in piano con una bilancia da valigia e leggere i grammi, invece di stimare angoli a occhio.
+
+**Bug: due fori passanti distruggevano la dentatura della cremagliera**
+
+**Sintomo:** sullo STEP della v2, scansione sulla primitiva a Y=0: fra il dente a X 6,586 e il successivo a 18,137 c'erano 11,551 mm invece di 4,712, e un secondo salto di 9,425 a X≈256.
+**Causa:** due viti di battuta erano state messe al centro della cremagliera, con fori Ø8 passanti **dall'alto**, che salivano fino a Z 3,375 tagliando i denti fino in testa. Il danno era un intaglio a V centrato sull'apice: a |Y|≥4,5 i denti erano interi, a Y=0 ne mancavano due. Restavano anche due schegge di dente spesse 0,030 mm, sotto la larghezza dell'ugello.
+**Fix applicato:** fori rimossi in v3, verificato sullo STEP. Verificato anche che le sole 11 asole laterali bastano: la forza di separazione dell'ingranamento (1,60 N) spinge la cremagliera **verso il legno**, mai in su, e il rollio residuo attorno alla fila di viti vale 0,008 mm, il 4% del gioco.
+
+**Decisioni prese:**
+
+- Contesto: la massa mobile sembrava il vincolo che teneva la macchina piccola. Una volta stabilito che il drag è costante, il tetto è salito da 1283 a 3410 g contro ~1150 stimati, e fra il formato più piccolo e il più grande ballavano 84 g.
+  Decisione: **formato A4 in orizzontale**, corsa X ~230 con la cremagliera da 59 denti, corsa Y ~317.
+  Alternative scartate: A4 verticale e formato quadro 300×300 — richiedono 317÷320 mm di corsa X, quindi una cremagliera giuntata; e l'A4 verticale non serve, perché per disegnarlo basta ruotare il file di 90° nel software. A5, che non aveva più nessuna ragione di essere.
+  Da rivedere se: il portale finito pesa molto più dei ~1150 g stimati.
+
+- Contesto: allungare la corsa X richiederebbe due segmenti di cremagliera.
+  Decisione: **un pezzo solo, 282,743 mm (60 passi esatti)**, che resta giuntabile in futuro senza ridisegnare nulla.
+  Alternative scartate: segmentare subito. Il rischio al giunto è asimmetrico — largo di 0,10 è un neo estetico in un punto, **stretto di 0,20 inceppa** — ed è un difetto permanente che si scopre dopo aver forato il listello.
+  Da rivedere se: serve un formato oltre l'A4.
+
+- Contesto: la catena delle quote verticali non chiude sui nominali. Sensibilità 0,728 mm di gioco per mm di altezza, budget ±0,275, tolleranze reali ±0,60 col multistrato.
+  Decisione: **la cremagliera si stampa dopo aver misurato il legno**, impostando D sulle misure reali; il residuo si registra ai fori Ø4 del motore (±0,5 mm = ±0,364 di gioco) con il metodo della carta da 0,10 mm nel punto più stretto.
+  **Supera la raccomandazione data poche ore prima nella stessa sessione** («lascia il file com'è e taglia il legno a 55,3»), che valeva solo finché il legno lo tagliava l'utente. Comprandolo già dimensionato, l'unico pezzo controllabile diventa quello stampato.
+  Alternative scartate: **stare stretti e comprimere legno o PLA con le viti**. Il PLA a 15 MPa resta elastico e cede 0,02 mm, inutile; il legno di costa a quella pressione si impronta in modo permanente e continua a scorrere per settimane, di una quantità dello stesso ordine dell'intero budget. E stretto è il lato pericoloso: largo si shimma in dieci minuti, stretto va piallato un listello già forato e montato.
+  Da rivedere se: il listello arriva imbarcato oltre 0,27 mm su 284 — allora si passa alle staffe stampate sul binario.
+
+- Contesto: legno massello o multistrato per il riporto della cremagliera.
+  Decisione: **multistrato, ricavato di costa da un pannello.**
+  Alternative scartate: massello, che trasversalmente alla fibra si muove dell'1,2% su un'escursione stagionale — **0,66 mm su 55**, più del doppio dell'intero budget, con la macchina che si inceppa d'inverno e balla d'estate. Il multistrato nel piano si muove 0,05 mm.
+
+- Contesto: scelta del riempimento della cremagliera fra gyroid, nido d'ape e triangoli.
+  Decisione: **gyroid 25%, 4 perimetri, layer 0,16 mm.** Con 4 perimetri i denti sono massicci ovunque, quindi il pattern conta solo per la stabilità dimensionale: il gyroid non ha tratti rettilinei lunghi (nessuna direzione di ritiro privilegiata su 284 mm) e non si incrocia mai con se stesso.
+  Alternative scartate: nido d'ape, che ripassa ogni cella più volte per layer sprecando tempo per una resistenza non necessaria; griglia (l'impostazione di partenza), che fa passare l'ugello sopra linee già depositate a ogni intersezione.
+
+- Contesto: dove attaccare la trave dell'asse Y. Il piano iniziale erano le 4 viti superiori del motore, lasciate libere apposta.
+  Decisione: **la trave Y si attacca al corpo del carrello.** Rafforza il punto già aperto il 2026-09-26 con una ragione nuova e decisiva: il motore sta a 58÷74 °C e il PLA ha la Tg a 60 — una staffa imbullonata sulla sua faccia sarebbe il pezzo di plastica **più caldo e più caricato della macchina**, in condizioni da manuale di scorrimento viscoso, mentre tutto il resto lavora a temperatura ambiente. Accettata dall'utente.
+  Alternative scartate: attacco sulle viti del motore. Oltre al termico: rende i due estremi del portale diversi per costruzione (il motore ce l'ha un lato solo), e cambierebbe da entrambe le parti se si aggiunge il secondo motore.
+
+- Contesto: dove mettere penna, motore e cremagliera sul carrello Y.
+  Decisione: **tutti sul piano di simmetria della sezione**, con penna al centro dell'impronta dei cuscinetti e motore sfalsato **lungo la corsa** invece che di fianco. Azzera due errori su tre: l'imbardata non sposta ciò che sta sull'asse, e una forza sul piano di simmetria non genera torsione. Corollario: **la sezione deve avere un piano di simmetria**, quindi T e non L.
+  Alternative scartate: penna all'estremità di un carrello a C (sketch 2) — 0,250 mm di imbardata più 0,209 di torsione, contro uno spessore di tratto di 0,3÷0,5.
+  Da rivedere se: non si trova una T e nemmeno due angolari accoppiabili.
+
+- Contesto: la cremagliera dell'asse Y su una seconda trave dedicata.
+  Decisione: **cremagliera e guida sullo stesso corpo rigido**, con la cremagliera su una staffa stampata della trave che porta i cuscinetti.
+  Alternative scartate: seconda trave. Farebbe dipendere la profondità d'ingranamento da quanto due pezzi distinti restano paralleli su 437 mm. Una staffa stampata si flette di 0,002 mm: per tenere una cremagliera non serve una trave.
+
+- Contesto: il tratto di perno stampato fra due cuscinetti superiori coassiali, ~30 mm all'aria.
+  Decisione: **due tronchetti contrapposti**, uno per cuscinetto, radicati ciascuno nella propria parete — la stessa soluzione già in uso sull'asse X, che mantiene l'accoppiamento Ø8,1/collare Ø10,1 già validato.
+  Alternative scartate: **ingrossare il perno in mezzo** (suggerimento sbagliato, corretto dall'utente: il cuscinetto interno si infila dalla punta e non passerebbe oltre un tratto più grosso). Scartato anche il perno d'acciaio, che introdurrebbe un accoppiamento nuovo da mettere a punto per un guadagno che non serve — la resistenza ha già un coefficiente 84×, e il motivo per irrigidire è solo lo scorrimento viscoso.
+
+**File consegnati/modificati:**
+- `documento-sessione-cnc-2d.md` — v14 → v15
+- Controllati (non modificati da me): `cremagliera_prova_2.step`, `cremagliera_prova_3.step`, `tot_prova_3.step`
+- Nessun file di progetto toccato: la sessione è stata di analisi, misura e progettazione
+
+**Impatto su Vision/Pipeline:** Step 5 — l'obiettivo passa da **A5 a A4 in orizzontale**, e la decisione sul formato del 2026-09-21 viene superata (testo precedente conservato). Aggiornato il blocco dei problemi aperti: chiusi il test della calamita, la caratterizzazione dell'attrito e la profondità del vano motore; aperti la misura del legno prima della stampa, il piano B con staffe sul binario, la specifica del profilo Y e il layout del carrello Y.
+
+---
 
 ### [2026-09-26 17:48] Carrello validato in stampa, cremagliera verificata, e bilancio di coppia del motore
 
