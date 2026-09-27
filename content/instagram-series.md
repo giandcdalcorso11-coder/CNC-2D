@@ -19,33 +19,46 @@ Stile di riferimento: la serie di Giovanni Dapont sulla barchetta radiocomandata
 
 ## Registro pubblicazione
 
-| Ep. | Titolo | Step reale | Codice di riferimento | Stato riprese | Stato montaggio | Pubblicato |
-|-----|--------|-----------|------------------------|----------------|------------------|------------|
-| 0 | L'idea | — | — | da girare | da fare | no |
-| 1 | Il primo LED | Step 1 | non recuperabile, [vedi nota](../firmware/archivio-storico/README.md#nota-sul-primissimo-test-ep-1--il-primo-led) | da girare | da fare | no |
-| 2 | La batteria | Step 1 | — (nessuna modifica firmware) | da girare | da fare | no |
-| 3 | La dashboard nel browser | Step 1.1 | [`01-dashboard-led-singolo.ino`](../firmware/archivio-storico/01-dashboard-led-singolo.ino) | da girare | da fare | no |
-| 4 | OTA e i log | Step 1.1 | [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino) | da girare | da fare | no |
-| 5 | Le prime frecce | Step 1.1 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
-| 6 | Cablaggio motore X e il primo driver morto | Step 2 | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
-| 7 | La caccia al Vref | Step 2 | [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino) | da girare | da fare | no |
-| 8 | Il mistero del wiggle | Step 2 | [`08-dir-enable-spostati.ino`](../firmware/archivio-storico/08-dir-enable-spostati.ino) | da scrivere | da fare | no |
-| 9 | La causa vera: l'alimentatore RGB | Step 2 | [`10-test-pin-multimetro.ino`](../firmware/archivio-storico/10-test-pin-multimetro.ino) | da scrivere | da fare | no |
-| 10 | Motore X vivo, poi il Y | Step 2 | [`11-asse-y.ino`](../firmware/archivio-storico/11-asse-y.ino) | da scrivere | da fare | no |
-| 11 | Perché arrendersi a un firmware pronto | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
-| 12 | Installazione alla cieca | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
-| 13 | La penna come asse | Step 3 | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
-| 14 | Il primo quadrato | Step 3 | [`gcode/test/`](../gcode/test/) | da scrivere | da fare | no |
-| 15 | Il calcolo resta nel browser | Step 4 | [`webui/`](../webui/) | da scrivere | da fare | no |
-| 16 | Dall'SVG al foglio | Step 4 | [`webui/js/svgimport.js`](../webui/js/svgimport.js), [`webui/js/paper.js`](../webui/js/paper.js) | da scrivere | da fare | no |
-| 17 | Il G-code ottimizzato | Step 4 | [`webui/js/optimize.js`](../webui/js/optimize.js), [`webui/js/gcode.js`](../webui/js/gcode.js) | da scrivere | da fare | no |
-| 18 | Cremagliera o cinghia | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
-| 19 | Il cuscinetto giusto | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
-| 20 | Il primo pignone stampato | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
-| 21 | Il carrello e le due guide | Step 5 | — (progettazione meccanica, nessun codice) | da scrivere | da fare | no |
-| 22 | Taratura e primo disegno vero | Step 5 | [`14-servo-pen-lift.ino`](../firmware/archivio-storico/14-servo-pen-lift.ino) | da scrivere | da fare | no |
+Il registro non è più un piano di idee scritto in anticipo: ogni episodio dal n. 3 in poi è ancorato a una
+voce reale dello **storico sessioni** in `documento-sessione-cnc-2d.md` (colonna "Sessione reale") — cioè a
+lavoro che è *già stato fatto e documentato*, non a una sceneggiatura immaginata prima. Quando emerge lavoro
+reale nuovo (una nuova voce di storico), si aggiungono nuovi episodi qui; non si scrivono episodi per lavoro
+non ancora avvenuto.
 
-Nota: i link puntano ai file nel repository (relativi a questa cartella `content/`) — cliccabili direttamente su GitHub.
+| Ep. | Titolo | Step reale | Sessione reale | Codice/file di riferimento | Stato riprese | Stato montaggio | Pubblicato |
+|-----|--------|-----------|-----------------|------------------------------|----------------|------------------|------------|
+| 0 | L'idea | — | — (introduttivo) | — | da girare | da fare | no |
+| 1 | Il primo LED | Step 1 | [2026-09-19 10:03](../documento-sessione-cnc-2d.md#2026-09-19-1003-bring-up-hardware-esp32-alimentazione-usb-e-batteria-completati) | non recuperabile, [vedi nota](../firmware/archivio-storico/README.md#nota-sul-primissimo-test-ep-1--il-primo-led) | da girare | da fare | no |
+| 2 | La batteria | Step 1 | [2026-09-19 10:03](../documento-sessione-cnc-2d.md#2026-09-19-1003-bring-up-hardware-esp32-alimentazione-usb-e-batteria-completati) | — (nessuna modifica firmware) | da girare | da fare | no |
+| 3 | La dashboard nel browser | Step 1.1 | [2026-09-19 09:25](../documento-sessione-cnc-2d.md#2026-09-19-0925-dashboard-web-esp32-con-controllo-led-e-configurazione-wi-fi) | [`01-dashboard-led-singolo.ino`](../firmware/archivio-storico/01-dashboard-led-singolo.ino) | da girare | da fare | no |
+| 4 | OTA e i log | Step 1.1 | [2026-09-20 09:45](../documento-sessione-cnc-2d.md#2026-09-20-0945-dashboard-estesa-led-ota-log-e-avvio-debug-driver-a4988motore-x) | [`03-ota.ino`](../firmware/archivio-storico/03-ota.ino), [`04-tab-log.ino`](../firmware/archivio-storico/04-tab-log.ino) | da girare | da fare | no |
+| 5 | Le prime frecce | Step 1.1 | [2026-09-20 09:45](../documento-sessione-cnc-2d.md#2026-09-20-0945-dashboard-estesa-led-ota-log-e-avvio-debug-driver-a4988motore-x) | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
+| 6 | Cablaggio motore X e il primo driver morto | Step 2 | [2026-09-20 09:45](../documento-sessione-cnc-2d.md#2026-09-20-0945-dashboard-estesa-led-ota-log-e-avvio-debug-driver-a4988motore-x) | [`06-frecce-motore-x.ino`](../firmware/archivio-storico/06-frecce-motore-x.ino) | da girare | da fare | no |
+| 7 | La caccia al Vref | Step 2 | [2026-09-20 09:45](../documento-sessione-cnc-2d.md#2026-09-20-0945-dashboard-estesa-led-ota-log-e-avvio-debug-driver-a4988motore-x) | [`07-step-lento-diagnosi.ino`](../firmware/archivio-storico/07-step-lento-diagnosi.ino) | da girare | da fare | no |
+| 8 | Il mistero del wiggle | Step 2 | [2026-09-20 09:45](../documento-sessione-cnc-2d.md#2026-09-20-0945-dashboard-estesa-led-ota-log-e-avvio-debug-driver-a4988motore-x) | [`08-dir-enable-spostati.ino`](../firmware/archivio-storico/08-dir-enable-spostati.ino) | da scrivere | da fare | no |
+| 9 | La causa vera: l'alimentatore RGB | Step 2 | [2026-09-20 18:18](../documento-sessione-cnc-2d.md#2026-09-20-1818-motore-x-funzionante-la-causa-era-lalimentatore-non-il-cablaggio) | [`10-test-pin-multimetro.ino`](../firmware/archivio-storico/10-test-pin-multimetro.ino) | da scrivere | da fare | no |
+| 10 | Motore X vivo, poi il Y | Step 2 | [2026-09-20 18:18](../documento-sessione-cnc-2d.md#2026-09-20-1818-motore-x-funzionante-la-causa-era-lalimentatore-non-il-cablaggio) + [2026-09-21 09:15](../documento-sessione-cnc-2d.md#2026-09-21-0915-secondo-asse-pen-lift-e-scelta-di-fluidnc-come-firmware-definitivo) | [`11-asse-y.ino`](../firmware/archivio-storico/11-asse-y.ino) | da scrivere | da fare | no |
+| 11 | Perché arrendersi a un firmware pronto | Step 3 | [2026-09-21 09:15](../documento-sessione-cnc-2d.md#2026-09-21-0915-secondo-asse-pen-lift-e-scelta-di-fluidnc-come-firmware-definitivo) | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 12 | Installazione alla cieca | Step 3 | [2026-09-21 09:57](../documento-sessione-cnc-2d.md#2026-09-21-0957-progetto-della-struttura-meccanica-e-installazione-di-fluidnc) | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 13 | La penna come asse | Step 3 | [2026-09-21 09:15](../documento-sessione-cnc-2d.md#2026-09-21-0915-secondo-asse-pen-lift-e-scelta-di-fluidnc-come-firmware-definitivo) | [`cnc2d-config.yaml`](../firmware/fluidnc/cnc2d-config.yaml) | da scrivere | da fare | no |
+| 14 | Il primo quadrato | Step 3 | [2026-09-21 11:18](../documento-sessione-cnc-2d.md#2026-09-21-1118-fluidnc-installato-configurato-e-validato-la-macchina-si-muove-sotto-g-code) | [`gcode/test/`](../gcode/test/) | da scrivere | da fare | no |
+| 15 | Il calcolo resta nel browser | Step 4 | [2026-09-24 18:44](../documento-sessione-cnc-2d.md#2026-09-24-1844-dallsvg-al-g-code-nellinterfaccia-e-progetto-meccanico-con-modulo-15) | [`webui/`](../webui/) | da scrivere | da fare | no |
+| 16 | Dall'SVG al foglio | Step 4 | [2026-09-24 18:44](../documento-sessione-cnc-2d.md#2026-09-24-1844-dallsvg-al-g-code-nellinterfaccia-e-progetto-meccanico-con-modulo-15) | [`webui/js/svgimport.js`](../webui/js/svgimport.js), [`webui/js/paper.js`](../webui/js/paper.js) | da scrivere | da fare | no |
+| 17 | Il G-code ottimizzato | Step 4 | [2026-09-24 18:44](../documento-sessione-cnc-2d.md#2026-09-24-1844-dallsvg-al-g-code-nellinterfaccia-e-progetto-meccanico-con-modulo-15) | [`webui/js/optimize.js`](../webui/js/optimize.js), [`webui/js/gcode.js`](../webui/js/gcode.js) | da scrivere | da fare | no |
+| 18 | Il pignone e il modulo giusto | Step 5 | [2026-09-24 18:44](../documento-sessione-cnc-2d.md#2026-09-24-1844-dallsvg-al-g-code-nellinterfaccia-e-progetto-meccanico-con-modulo-15) | — (progettazione, primo pignone stampato modulo 1,5) | da scrivere | da fare | no |
+| 19 | Tutto si stampa, anche gli ingranaggi | Step 5 | [2026-09-24 18:44](../documento-sessione-cnc-2d.md#2026-09-24-1844-dallsvg-al-g-code-nellinterfaccia-e-progetto-meccanico-con-modulo-15) | — (decisione: cremagliera stampata, non comprata in POM) | da scrivere | da fare | no |
+| 20 | Il cuscinetto giusto | Step 5 | [2026-09-25 12:17](../documento-sessione-cnc-2d.md#2026-09-25-1217-materiali-acquistati-il-progetto-si-adatta-a-quello-che-esiste-in-ferramenta) | — (calcolo pressione di contatto, materiali acquistati) | da scrivere | da fare | no |
+| 21 | Quattro errori prima di stampare | Step 5 | [2026-09-26 17:48](../documento-sessione-cnc-2d.md#2026-09-26-1748-carrello-validato-in-stampa-cremagliera-verificata-e-bilancio-di-coppia-del-motore) | — (interasse fori motore, perni fuori quota, cremagliera asimmetrica, dato di coppia sbagliato) | da scrivere | da fare | no |
+| 22 | Il bilancio di coppia | Step 5 | [2026-09-26 17:48](../documento-sessione-cnc-2d.md#2026-09-26-1748-carrello-validato-in-stampa-cremagliera-verificata-e-bilancio-di-coppia-del-motore) | — (motore pancake 130 mN·m, angolo di distacco target <7°) | da scrivere | da fare | no |
+| 23 | Il falso allarme dello strisciamento | Step 5 | [2026-09-27 17:32](../documento-sessione-cnc-2d.md#2026-09-27-1732-meccanica-carrello-completo-misurato-falso-allarme-sullo-strisciamento-cremagliera-chiusa-e-apertura-dellasse-y) | — (attrito interno dei cuscinetti scambiato per strisciamento) | da scrivere | da fare | no |
+| 24 | Il formato cresce | Step 5 | [2026-09-27 17:32](../documento-sessione-cnc-2d.md#2026-09-27-1732-meccanica-carrello-completo-misurato-falso-allarme-sullo-strisciamento-cremagliera-chiusa-e-apertura-dellasse-y) | — (da A5 ad A4 orizzontale) | da scrivere | da fare | no |
+| 25 | Si apre l'asse Y | Step 5 | [2026-09-27 17:32](../documento-sessione-cnc-2d.md#2026-09-27-1732-meccanica-carrello-completo-misurato-falso-allarme-sullo-strisciamento-cremagliera-chiusa-e-apertura-dellasse-y) | — (quattro sketch, profilo a T, principio di simmetria) | da scrivere | da fare | no |
+| 26 | Taratura e primo disegno vero | Step 5 | *in attesa — non ancora accaduto* | [`14-servo-pen-lift.ino`](../firmware/archivio-storico/14-servo-pen-lift.ino) | non pianificabile ancora | — | no |
+
+Nota: i link ai file puntano al repository (relativi a questa cartella `content/`) — cliccabili direttamente su
+GitHub. I link "Sessione reale" puntano alla voce corrispondente nello storico di `documento-sessione-cnc-2d.md`.
+L'episodio 26 resta un segnaposto: non riceve uno script finché la taratura reale non è stata fatta e
+documentata nello storico sessioni.
 
 ---
 
