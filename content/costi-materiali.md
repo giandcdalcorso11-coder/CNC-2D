@@ -35,13 +35,13 @@ Molti articoli sono venduti in confezioni multiple o in kit con componenti misti
 | Voce | Acquistato | Prezzo acquisto | Usato nel progetto (stima) | Prezzo effettivo (stima) | Stato | Note |
 |------|-----------|------------------|------------------------------|---------------------------|-------|------|
 | Tavola in legno (compensato 385×455×10) | 1 | 3,00 € | 0 (sostituita) | 0,00 € | stima | superata dalla nuova base in legno sotto (confermato) |
-| Viti M3 (conf. da 16, 10, 25 mm) | 3 confezioni | 6,00 € | ~90% (M3 è la vite unica di tutto il progetto) | 5,40 € | stima | split ipotizzato dentro il totale Brico |
+| Viti M3 (conf. da 16, 10, 25 mm) | 3 confezioni | 6,00 € | ~90% (era la vite unica del progetto, ora affiancata dalle M4) | 5,40 € | stima | split ipotizzato dentro il totale Brico |
 | Barre di ferro (profilo a U + angolare forato) | 2 | 21,60 € | 2 (intere) | 21,60 € | stima | split ipotizzato dentro il totale Brico; profilo Y e angolare, entrambi impiegati |
 | **Totale scontrino Brico** | — | **30,60 €** | — | **30,00 €** | confermato | somma delle tre voci sopra (split stimato) |
 | Cuscinetti 608RS 8x22x7mm | 20 pezzi | 11,99 € | ~12 pezzi (stima) | 7,19 € | confermato | in uso sul carrello, quantità reale da confermare |
 | Cuscinetti MR63ZZ 3x6x2,5mm | 10 pezzi | 9,95 € | ~6 pezzi (stima) | 5,97 € | confermato | in uso sul carrello, quantità reale da confermare |
 | Nuova base in legno | 1 | 13,00 € | 1 (intera) | 13,00 € | confermato | sostituisce la tavola Brico da 3 € sopra |
-| Viti M4 da 20 mm | 2 confezioni | 4,00 € | assunto 100% | 4,00 € | confermato | seconda misura di viteria, scelta intenzionale (finora solo M3) |
+| Viti M4 da 20 mm | 2 confezioni | 4,00 € | assunto 100% | 4,00 € | confermato | si aggiungono alle M3, non le sostituiscono — seconda misura intenzionale |
 | **Totale meccanica** | — | **69,54 €** | — | **57,16 €** | — | — |
 
 ## Materiale di stampa 3D
@@ -77,4 +77,4 @@ Note generali:
 - La batteria NASTIMA 12V citata nelle verifiche hardware iniziali non è stata usata: è stata sostituita dall'alimentatore 12V/3A, quindi non compare come voce di costo
 - Strumenti (multimetro etc.) esclusi volutamente dal conteggio
 - Nuova base in legno (13 €): sostituisce quella stimata nello scontrino Brico (3 €), ora segnata come non più in uso nel prezzo effettivo
-- Viti M4 da 20mm (4 €, due confezioni): seconda misura di viteria, scelta intenzionale — il principio "solo M3" documentato nello storico sessioni non vale più per questo componente
+- Viti M4 da 20mm (4 €, due confezioni): si aggiungono alle M3 esistenti, non le sostituiscono — il progetto ora usa due misure di viteria invece di una sola
