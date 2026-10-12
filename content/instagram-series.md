@@ -66,18 +66,42 @@ documentata nello storico sessioni.
 
 **Step reale corrispondente:** nessuno (episodio introduttivo, girato prima di iniziare la finzione temporale)
 
+**Struttura:** A) cold open/trailer (5-8s) — B) sigla/titolo (2-3s) — C) spiegazione del progetto
+
+### A. Cold open
+
+**Girato:** stacchi rapidi (0,5-1s l'uno) di momenti reali già successi — driver A4988 danneggiato/che si scalda, la faccia dell'utente mentre il motore non si muove, il multimetro con un valore assurdo, il momento del corto sul pin STEP. Chiude con un piccolo assaggio di qualcosa che funziona (motore che gira, o il cursore della webui che disegna) — non la macchina finita, solo una promessa.
+
+**Voice over (bozza, frasi brevissime, quasi spot):**
+
+> "Questo si è bruciato.
+> [stacco] Questo non voleva girare.
+> [stacco] Questo mi ha fatto perdere un pomeriggio intero a capire perché.
+> [stacco, tono che cambia] E alla fine ha funzionato.
+> Ecco come."
+
+**Testo overlay:** "IN QUESTA SERIE..." (appare a metà dei fail, resta fino allo stacco sulla sigla)
+
+**Musica:** sting che cresce, taglio secco sul beat all'ultima parola
+
+### B. Sigla
+
+**Testo overlay:** "Costruire una CNC 2D da zero"
+
+### C. Spiegazione
+
 **Girato:** B-roll dei componenti ancora nella scatola (ESP32, motori NEMA17, driver A4988), eventuale sketch/disegno a mano del plotter che disegna, primo piano dell'utente che parla o solo voce fuori campo
 
 **Voice over (bozza):**
 
 > "Voglio costruire una macchina che disegna da sola. Non un kit, non un plotter pronto — una CNC 2D fatta da zero: motori, elettronica, firmware, struttura, tutto.
 > L'idea è semplice da dire e complicata da fare: due assi motorizzati che muovono una penna, una terza per alzarla e abbassarla, e un cervello — un ESP32 — che riceve i comandi via Wi-Fi, senza bisogno di un cavo USB collegato mentre disegna.
-> Non ho ancora idea di quanti pezzi brucerò prima di arrivarci. Ma da qui parte tutto — un componente alla volta, un errore alla volta.
+> Quello che avete visto all'inizio non è il trailer di qualcos'altro — è letteralmente quello che mi aspetta. Da qui parte tutto, un componente alla volta, un errore alla volta.
 > Episodio 1: il primo pezzo che si accende."
 
 **Testo overlay suggerito:** "Costruire una CNC 2D da zero — Episodio 0"
 
-**Musica:** tono più lento/cinematografico rispetto agli episodi tecnici, per marcare che è il "pilot"
+**Musica:** tono più lento/cinematografico nella sezione C rispetto agli episodi tecnici, per marcare che è il "pilot"
 
 ---
 
