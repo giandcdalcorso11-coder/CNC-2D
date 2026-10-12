@@ -1,0 +1,1410 @@
+// CNC-2D — Dashboard web ESP32 (banco di collaudo: LED, Wi-Fi via web, OTA, log, assi X/Y, servo)
+//
+// Librerie usate: tutte incluse nel core ESP32 per Arduino (nessuna installazione extra):
+// WiFi.h, WebServer.h, Preferences.h, ArduinoOTA.h
+//
+// Comportamento al boot:
+// - Se sono salvate credenziali Wi-Fi valide, si connette alla rete di casa (modalità STA)
+//   ed è raggiungibile su http://cnc2d.local oppure sull'IP mostrato sul Serial Monitor.
+// - Se non ci sono credenziali salvate, o la connessione fallisce, apre un Access Point
+//   di emergenza (SSID/PASS sotto) su cui è comunque raggiungibile la stessa pagina,
+//   per poter impostare/correggere le credenziali dalla tab Wi-Fi.
+//
+// Una volta connesso alla rete di casa, i successivi aggiornamenti firmware possono
+// essere caricati via Wi-Fi (OTA) da Arduino IDE selezionando la porta di rete "cnc2d",
+// senza bisogno del cavo USB. Password OTA: la stessa dell'Access Point di emergenza.
+//
+// DUE CAMBIAMENTI STRUTTURALI RISPETTO ALLE VERSIONI PRECEDENTI:
+//
+// 1. I passi non sono più generati dentro loop(). Con i microstep attivi la frequenza
+//    sale a qualche migliaio di impulsi al secondo, e server.handleClient() può bloccare
+//    il loop per centinaia di millisecondi: ogni blocco diventava un buco nel treno di
+//    impulsi, cioè passi persi. Ora gli impulsi li emette un timer hardware a 20 kHz,
+//    che il web non può interrompere.
+//
+// 2. L'interfaccia parla in millimetri, non in passi. Il legame fra i due lo danno
+//    pignone e cremagliera: un giro di pignone (modulo 1,5, 20 denti) vale
+//    pi * m * z = 94,2478 mm. Con microstep 1/16 fanno 33,953 passi/mm. Il numero di
+//    microstep è impostabile dalla tab Motore perché dipende dai ponticelli MS1/MS2/MS3
+//    sul driver, ed è l'unica cosa che il firmware non può leggere da solo.
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include <ArduinoOTA.h>
+#include <math.h>
+#include "soc/gpio_struct.h" // scrittura diretta sui registri GPIO dentro l'interruzione
+
+#define RED_LED_PIN 2
+#define YELLOW_LED_PIN 19
+#define GREEN_LED_PIN 18
+
+#define STEP_X_PIN 4
+#define DIR_X_PIN 26
+#define STEP_Y_PIN 25
+#define DIR_Y_PIN 33
+#define ENABLE_PIN 27 // condiviso tra i due driver
+#define SERVO_PIN 32
+
+// Se i tre ponticelli MS1/MS2/MS3 sono stati messi in parallelo e portati a un GPIO
+// dell'ESP32 invece che fissi a 5 V, metti qui quel GPIO: il firmware lo porta alto
+// per 1/16 e basso per il passo intero. Lasciando -1 non viene pilotato nessun pin
+// e il valore impostato dalla pagina serve solo ai conti (caso dei ponticelli fissi).
+#define MS_PIN -1
+
+// Servo standard: 50 Hz, impulso 500-2500 us per 0-180 gradi.
+#define SERVO_FREQ 50
+#define SERVO_RES_BITS 16
+#define SERVO_CHANNEL 4
+const int SERVO_US_MIN = 500;
+const int SERVO_US_MAX = 2500;
+
+#define WIFI_CONNECT_TIMEOUT_MS 15000
+
+// ---------------------------------------------------------------------------
+// Meccanica: pignone e cremagliera
+// ---------------------------------------------------------------------------
+// Un giro di pignone avanza di un passo del dente per ogni dente, cioè pi*m*z.
+// Non dipende dal numero di denti del pignone solo come numero: cambiandolo
+// cambia sia la corsa per giro sia la risoluzione, quindi è qui e non sparso.
+const float GEAR_MODULE_MM = 1.5f;
+const int GEAR_TEETH = 20;
+const float MM_PER_REV = 3.14159265f * GEAR_MODULE_MM * GEAR_TEETH; // 94,2478 mm
+const int FULL_STEPS_PER_REV = 200;                                 // motore 1,8 gradi
+
+// Microstep impostati sul driver con i ponticelli. Salvato in NVS.
+int microsteps = 16;
+
+float stepsPerMm() {
+  return (float)FULL_STEPS_PER_REV * (float)microsteps / MM_PER_REV;
+}
+
+long stepsPerRev() {
+  return (long)FULL_STEPS_PER_REV * (long)microsteps;
+}
+
+// ---------------------------------------------------------------------------
+// Generazione passi: timer hardware
+// ---------------------------------------------------------------------------
+// Il timer scatta a TICK_HZ e, a ogni scatto, ogni asse somma il proprio
+// incremento a un accumulatore a virgola fissa: quando l'accumulatore supera
+// 65536 esce un impulso. Così la frequenza media è esatta anche quando non è
+// un sottomultiplo del tick, invece di essere arrotondata al tick più vicino.
+#define TICK_HZ 20000
+#define ACC_ONE 65536UL
+
+const unsigned long DIR_SETUP_US = 20;
+const unsigned long STEP_PULSE_US = 10; // solo per l'impulso singolo emesso fuori dall'ISR
+
+// Limiti dell'interfaccia, in millimetri al secondo.
+const float FEED_MIN_MM_S = 1.0f;
+const float FEED_MAX_MM_S = 100.0f;
+const float RAMP_MIN_MM = 0.0f;
+const float RAMP_MAX_MM = 20.0f;
+const long STEPS_PER_SEC_MAX = 6000; // tetto di sicurezza a valle di qualunque conto
+
+const char* AP_SSID = "CNC-2D-Setup";
+const char* AP_PASS = "cnc2d2026";
+
+Preferences prefs;
+Preferences motorPrefs;
+WebServer server(80);
+
+bool ledRedState = false;
+bool ledYellowState = false;
+bool ledGreenState = false;
+bool apMode = false;
+volatile bool driverEnabled = true;
+
+// Stato penna: "up", "down", "free" (nessun impulso, servo morbido) o "man" (angolo
+// impostato a mano dallo slider). All'accensione si parte da "free": un servo che va
+// in battuta contro un vincolo meccanico appena dato corrente assorbe moltissimo.
+int penUpDeg = 90;
+int penDownDeg = 60;
+int penAngle = 90;
+String penState = "free";
+
+// stepsRemaining: 0 = fermo, >0 = passi ancora da fare, -1 = rotazione continua.
+// acc/inc sono l'accumulatore a virgola fissa descritto sopra; li tocca l'ISR,
+// quindi ogni modifica dal lato web passa dalla sezione critica.
+struct Motor {
+  const char* name;
+  uint8_t stepPin;
+  uint8_t dirPin;
+  volatile long stepsRemaining;
+  volatile long stepsDone;
+  volatile uint32_t acc;
+  volatile uint32_t inc;
+  volatile uint32_t incTarget;
+  volatile long rampSteps;
+  volatile bool pulseOpen;
+  int dir;
+  float feedMmS;  // velocità impostata dall'utente
+  float rampMm;   // su quanti mm si distribuisce la partenza
+  bool invert;    // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
+};
+
+Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
+Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
+
+portMUX_TYPE stepMux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t* stepTimer = NULL;
+
+String logBuffer = "";
+const size_t LOG_MAX_LEN = 4000;
+
+void logMsg(const String& msg) {
+  Serial.println(msg);
+  logBuffer += msg;
+  logBuffer += "\n";
+  if (logBuffer.length() > LOG_MAX_LEN) {
+    logBuffer = logBuffer.substring(logBuffer.length() - LOG_MAX_LEN);
+  }
+}
+
+// Scrittura diretta sul registro GPIO: dentro un'interruzione digitalWrite()
+// non è garantita in IRAM e costa troppo.
+static inline void IRAM_ATTR pinFastHigh(uint8_t p) {
+  if (p < 32) GPIO.out_w1ts = (1UL << p);
+  else GPIO.out1_w1ts.val = (1UL << (p - 32));
+}
+
+static inline void IRAM_ATTR pinFastLow(uint8_t p) {
+  if (p < 32) GPIO.out_w1tc = (1UL << p);
+  else GPIO.out1_w1tc.val = (1UL << (p - 32));
+}
+
+// Durante la rampa il primo passo parte 4 volte più lento della velocità
+// impostata e si accelera linearmente fino ad essa.
+static inline void IRAM_ATTR applyRamp(Motor& m) {
+  if (m.rampSteps > 0 && m.stepsDone < m.rampSteps) {
+    uint32_t den = (uint32_t)(m.rampSteps + 3 * (m.rampSteps - m.stepsDone));
+    uint32_t v = (uint32_t)(((uint64_t)m.incTarget * (uint64_t)m.rampSteps) / den);
+    m.inc = (v == 0) ? 1 : v;
+  } else {
+    m.inc = m.incTarget;
+  }
+}
+
+void IRAM_ATTR serviceMotorISR(Motor& m) {
+  // L'impulso aperto al tick precedente va chiuso sempre, anche se nel frattempo
+  // il movimento è stato fermato: un pin STEP lasciato alto fa perdere l'impulso dopo.
+  if (m.pulseOpen) {
+    pinFastLow(m.stepPin);
+    m.pulseOpen = false;
+  }
+  if (m.stepsRemaining == 0 || !driverEnabled) return;
+
+  m.acc += m.inc;
+  if (m.acc < ACC_ONE) return;
+  m.acc -= ACC_ONE;
+
+  pinFastHigh(m.stepPin);
+  m.pulseOpen = true;
+  m.stepsDone++;
+  if (m.stepsRemaining > 0) m.stepsRemaining--;
+  applyRamp(m);
+}
+
+void IRAM_ATTR onStepTick() {
+  serviceMotorISR(motorX);
+  serviceMotorISR(motorY);
+}
+
+void setDriverEnabled(bool on) {
+  driverEnabled = on;
+  digitalWrite(ENABLE_PIN, on ? LOW : HIGH); // A4988: ENABLE attivo basso
+}
+
+// DIR va impostato una sola volta a inizio movimento, non ad ogni passo:
+// l'A4988 richiede che sia stabile prima del fronte di salita di STEP.
+void setDir(Motor& m, int dir) {
+  m.dir = dir;
+  bool high = (dir > 0) != m.invert;
+  digitalWrite(m.dirPin, high ? HIGH : LOW);
+  delayMicroseconds(DIR_SETUP_US);
+}
+
+void servoWriteDeg(int deg) {
+  if (deg < 0) deg = 0;
+  if (deg > 180) deg = 180;
+  penAngle = deg;
+  long us = SERVO_US_MIN + (long)(SERVO_US_MAX - SERVO_US_MIN) * deg / 180;
+  uint32_t duty = (uint32_t)(us * (1UL << SERVO_RES_BITS) / 20000UL);
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(SERVO_PIN, duty);
+#else
+  ledcWrite(SERVO_CHANNEL, duty);
+#endif
+}
+
+// Duty a zero: nessun impulso, il servo smette di tenere la posizione.
+void servoRelease() {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(SERVO_PIN, 0);
+#else
+  ledcWrite(SERVO_CHANNEL, 0);
+#endif
+}
+
+void setPen(const String& state) {
+  if (state == "up") servoWriteDeg(penUpDeg);
+  else if (state == "down") servoWriteDeg(penDownDeg);
+  else servoRelease();
+  penState = state;
+  logMsg("Penna: " + state);
+}
+
+// Avvio movimento in passi, con velocità già convertita in passi al secondo.
+void startMoveSteps(Motor& m, int dir, long steps, long stepsPerSec, long rampSteps) {
+  if (stepsPerSec < 1) stepsPerSec = 1;
+  if (stepsPerSec > STEPS_PER_SEC_MAX) stepsPerSec = STEPS_PER_SEC_MAX;
+
+  uint32_t inc = (uint32_t)(((uint64_t)stepsPerSec * ACC_ONE) / TICK_HZ);
+  if (inc == 0) inc = 1;
+  if (inc > ACC_ONE) inc = ACC_ONE; // al massimo un passo per tick
+
+  setDir(m, dir);
+
+  portENTER_CRITICAL(&stepMux);
+  m.stepsDone = 0;
+  m.acc = 0;
+  m.incTarget = inc;
+  m.rampSteps = rampSteps;
+  applyRamp(m);
+  m.stepsRemaining = steps;
+  portEXIT_CRITICAL(&stepMux);
+}
+
+// Avvio movimento usando la velocità e la rampa configurate per quell'asse.
+void startMove(Motor& m, int dir, long steps) {
+  float spmm = stepsPerMm();
+  startMoveSteps(m, dir, steps, (long)(m.feedMmS * spmm), (long)(m.rampMm * spmm));
+}
+
+void stopMotor(Motor& m) {
+  portENTER_CRITICAL(&stepMux);
+  m.stepsRemaining = 0;
+  portEXIT_CRITICAL(&stepMux);
+}
+
+// ---------------------------------------------------------------------------
+// Prove d'insieme: quadrato e cerchio
+// ---------------------------------------------------------------------------
+// Ricalcano gcode/test/quadrato-e-cerchio-penna.gcode — stessa sequenza, stesse
+// pause, stessi movimenti di penna — ma senza interprete G-code: servono solo a
+// vedere i due assi e il servo muoversi insieme prima di montare la macchina.
+// Le coordinate sono in millimetri e diventano passi al momento dell'esecuzione,
+// quindi restano giuste qualunque microstep sia impostato.
+//
+// L'origine della prova è il punto in cui si trova la macchina quando si preme il
+// pulsante, e la posizione è tenuta in PASSI, non in millimetri: così l'ultimo
+// movimento torna esattamente al punto di partenza invece di accumulare l'errore
+// di arrotondamento di ogni tratto.
+
+#define DEMO_NONE 0
+#define DEMO_SQUARE 1
+#define DEMO_CIRCLE 2
+
+const float DEMO_SIDE_MM = 40.0f;
+const float DEMO_RADIUS_MM = 20.0f;
+const int DEMO_ARCS = 72; // il cerchio come poligono: un tratto ogni 5 gradi
+const float DEMO_FEED_MM_S = 12.0f;
+const float DEMO_RAPID_MM_S = 25.0f;
+const unsigned long DEMO_DWELL_MS = 300;
+
+// op: 0 = fine, 1 = rapido, 2 = tratto di lavoro, 3 = penna su, 4 = penna giù, 5 = pausa
+struct DemoStep {
+  uint8_t op;
+  float x;
+  float y;
+};
+
+int demoKind = DEMO_NONE;
+int demoIndex = 0;
+long demoPosX = 0;
+long demoPosY = 0;
+unsigned long demoWaitUntil = 0;
+
+int demoTotal(int kind) {
+  if (kind == DEMO_SQUARE) return 12;
+  if (kind == DEMO_CIRCLE) return 9 + DEMO_ARCS;
+  return 0;
+}
+
+const char* demoName(int kind) {
+  if (kind == DEMO_SQUARE) return "quadrato 40 mm";
+  if (kind == DEMO_CIRCLE) return "cerchio R20";
+  return "nessuna";
+}
+
+bool demoStepAt(int kind, int i, DemoStep& s) {
+  s.x = 0;
+  s.y = 0;
+  if (kind == DEMO_SQUARE) {
+    switch (i) {
+      case 0: s.op = 3; return true;                            // penna su
+      case 1: s.op = 5; return true;                            // pausa
+      case 2: s.op = 1; return true;                            // rapido all'origine
+      case 3: s.op = 4; return true;                            // penna giù
+      case 4: s.op = 5; return true;
+      case 5: s.op = 2; s.x = DEMO_SIDE_MM; return true;        // lato inferiore
+      case 6: s.op = 2; s.x = DEMO_SIDE_MM; s.y = DEMO_SIDE_MM; return true;
+      case 7: s.op = 2; s.y = DEMO_SIDE_MM; return true;
+      case 8: s.op = 2; return true;                            // ritorno all'origine
+      case 9: s.op = 3; return true;
+      case 10: s.op = 5; return true;
+      default: s.op = 0; return true;
+    }
+  }
+  if (kind == DEMO_CIRCLE) {
+    if (i == 0) { s.op = 3; return true; }
+    if (i == 1) { s.op = 5; return true; }
+    if (i == 2) { s.op = 1; s.x = DEMO_RADIUS_MM; return true; } // sul bordo
+    if (i == 3) { s.op = 4; return true; }
+    if (i == 4) { s.op = 5; return true; }
+    if (i >= 5 && i < 5 + DEMO_ARCS) {
+      int k = i - 4; // 1..DEMO_ARCS, antiorario come nel G-code
+      float a = 2.0f * 3.14159265f * (float)k / (float)DEMO_ARCS;
+      s.op = 2;
+      s.x = DEMO_RADIUS_MM * cosf(a);
+      s.y = DEMO_RADIUS_MM * sinf(a);
+      return true;
+    }
+    if (i == 5 + DEMO_ARCS) { s.op = 3; return true; }
+    if (i == 6 + DEMO_ARCS) { s.op = 5; return true; }
+    if (i == 7 + DEMO_ARCS) { s.op = 1; return true; }          // ritorno al centro
+    s.op = 0;
+    return true;
+  }
+  s.op = 0;
+  return true;
+}
+
+// Movimento coordinato: i due assi partono insieme e arrivano insieme, perché
+// ciascuno riceve la frequenza che gli serve per coprire la propria parte nello
+// stesso tempo. Niente rampa qui: a 12 mm/s il motore parte a 32 passi interi al
+// secondo, che aggancia da fermo, e una rampa diversa sui due assi storcerebbe il
+// tratto proprio nei primi millimetri.
+void demoGoTo(float x, float y, float feed) {
+  float spmm = stepsPerMm();
+  long tx = lroundf(x * spmm);
+  long ty = lroundf(y * spmm);
+  long dxs = tx - demoPosX;
+  long dys = ty - demoPosY;
+  demoPosX = tx;
+  demoPosY = ty;
+  if (dxs == 0 && dys == 0) return;
+
+  float dxmm = (float)dxs / spmm;
+  float dymm = (float)dys / spmm;
+  float dist = sqrtf(dxmm * dxmm + dymm * dymm);
+  float secs = dist / feed;
+  if (secs < 0.001f) secs = 0.001f;
+
+  if (dxs != 0) startMoveSteps(motorX, dxs > 0 ? 1 : -1, labs(dxs), (long)(fabsf((float)dxs) / secs), 0);
+  if (dys != 0) startMoveSteps(motorY, dys > 0 ? 1 : -1, labs(dys), (long)(fabsf((float)dys) / secs), 0);
+}
+
+void demoStart(int kind) {
+  demoKind = kind;
+  demoIndex = 0;
+  demoPosX = 0;
+  demoPosY = 0;
+  demoWaitUntil = 0;
+  logMsg(String("Prova d'insieme: avvio ") + demoName(kind));
+}
+
+void demoStop(const char* why) {
+  if (demoKind != DEMO_NONE) logMsg(String("Prova d'insieme: ") + why);
+  demoKind = DEMO_NONE;
+}
+
+void serviceDemo() {
+  if (demoKind == DEMO_NONE) return;
+  if (motorX.stepsRemaining != 0 || motorY.stepsRemaining != 0) return;
+  if (millis() < demoWaitUntil) return;
+
+  DemoStep s;
+  demoStepAt(demoKind, demoIndex, s);
+  if (s.op == 0) {
+    logMsg(String("Prova d'insieme: ") + demoName(demoKind) + " completata");
+    demoKind = DEMO_NONE;
+    return;
+  }
+  demoIndex++;
+
+  switch (s.op) {
+    case 1: demoGoTo(s.x, s.y, DEMO_RAPID_MM_S); break;
+    case 2: demoGoTo(s.x, s.y, DEMO_FEED_MM_S); break;
+    case 3: setPen("up"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+    case 4: setPen("down"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+    case 5: demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+  }
+}
+
+const char PAGE_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNC-2D Dashboard</title>
+<style>
+  :root{--bg:#111;--panel:#1b1b1f;--accent:#3b82f6;--text:#eee;--muted:#999;--danger:#ef4444;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px;text-align:center;border-bottom:1px solid #222;}
+  h1{margin:0;font-size:1.2rem;}
+  .tabs{display:flex;justify-content:center;gap:8px;padding:12px;flex-wrap:wrap;}
+  .tab-btn{background:var(--panel);border:1px solid #333;color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;}
+  .tab-btn.active{background:var(--accent);border-color:var(--accent);}
+  .tab-content{display:none;max-width:480px;margin:0 auto;padding:16px;}
+  .tab-content.active{display:block;}
+
+  .pad{display:grid;grid-template-columns:52px 60px 60px 60px 52px;
+       grid-template-rows:44px 60px 60px 60px 44px;gap:6px;justify-content:center;margin:20px auto;}
+  .pad button{font-size:1.4rem;border-radius:12px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
+  .pad button:active{background:#2a2a30;}
+  .pad .turn{font-size:.7rem;letter-spacing:.02em;color:var(--muted);}
+  .pad .turn:active{background:#2a2a30;color:var(--text);}
+  #btn-turn-up{grid-column:3;grid-row:1;}
+  #btn-up{grid-column:3;grid-row:2;}
+  #btn-turn-left{grid-column:1;grid-row:3;}
+  #btn-left{grid-column:2;grid-row:3;}
+  #btn-center{grid-column:3;grid-row:3;font-weight:bold;font-size:.9rem;}
+  #btn-center:disabled{opacity:.35;cursor:not-allowed;}
+  #btn-right{grid-column:4;grid-row:3;}
+  #btn-turn-right{grid-column:5;grid-row:3;}
+  #btn-down{grid-column:3;grid-row:4;}
+  #btn-turn-down{grid-column:3;grid-row:5;}
+
+  .led-row,.motor-row{display:flex;justify-content:center;gap:8px;margin:12px auto 0;}
+  .led-row button,.motor-row button{padding:10px 16px;border-radius:10px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;}
+  #btn-led-red.on{background:var(--danger);border-color:var(--danger);color:#2a0505;}
+  #btn-led-yellow.on{background:#eab308;border-color:#eab308;color:#2a2205;}
+  #btn-led-green.on{background:#22c55e;border-color:#22c55e;color:#04150a;}
+  .status{text-align:center;color:var(--muted);font-size:.9rem;margin-top:8px;}
+
+  .axes{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .axis-card{background:var(--panel);border:1px solid #333;border-radius:10px;padding:12px;}
+  .axis-card h3{margin:0 0 4px;font-size:1rem;}
+  .axis-card .pins{font-size:.72rem;color:var(--muted);margin:0 0 10px;}
+  .slider-label{display:flex;justify-content:space-between;align-items:baseline;font-size:.8rem;color:var(--muted);margin-top:10px;}
+  .slider-label b{color:var(--text);font-size:.85rem;}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:#333;outline:none;margin:8px 0 2px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
+  .axis-run{display:flex;gap:6px;margin-top:12px;}
+  .axis-run button{flex:1;padding:9px 0;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);cursor:pointer;font-size:1rem;}
+
+  form label,.field label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
+  input[type=text],input[type=password],input[type=number],select{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
+  .axis-card input[type=number]{padding:7px;font-size:.9rem;}
+  button.primary{margin-top:16px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:1rem;cursor:pointer;}
+  button.danger{background:var(--danger);}
+  button.ghost{padding:8px 12px;border-radius:8px;border:1px solid #333;background:var(--panel);color:var(--text);cursor:pointer;font-size:.85rem;}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .info{background:var(--panel);border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:12px;font-size:.9rem;line-height:1.5;}
+  .msg{margin-top:12px;font-size:.9rem;text-align:center;}
+  .placeholder{color:var(--muted);text-align:center;padding:32px 0;}
+  .log-view{background:#0e0e11;border:1px solid #333;border-radius:8px;padding:10px;height:300px;overflow-y:auto;font-family:monospace;font-size:.8rem;white-space:pre-wrap;word-break:break-word;margin:0;}
+  .check{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:.9rem;color:var(--muted);}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:6px;line-height:1.4;}
+  details{margin-top:16px;border-top:1px solid #222;padding-top:12px;}
+  summary{cursor:pointer;font-size:.9rem;color:var(--muted);}
+</style>
+</head>
+<body>
+<header><h1>CNC-2D &mdash; Pannello di controllo</h1></header>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="controllo">Controllo</button>
+  <button class="tab-btn" data-tab="motore">Motore</button>
+  <button class="tab-btn" data-tab="wifi">Wi-Fi</button>
+  <button class="tab-btn" data-tab="log">Log</button>
+  <button class="tab-btn" data-tab="codice">Codice</button>
+</div>
+
+<section id="controllo" class="tab-content active">
+  <div class="pad">
+    <button id="btn-turn-up" class="turn" onclick="fullTurn('y','up')" title="Y: un giro di pignone">1 giro</button>
+    <button id="btn-up"
+      onmousedown="pressStart('y','up')" onmouseup="pressEnd('y')" onmouseleave="pressEnd('y')"
+      ontouchstart="pressStart('y','up')" ontouchend="pressEnd('y')">&uarr;</button>
+    <button id="btn-turn-left" class="turn" onclick="fullTurn('x','left')" title="X: un giro di pignone">1 giro</button>
+    <button id="btn-left"
+      onmousedown="pressStart('x','left')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
+      ontouchstart="pressStart('x','left')" ontouchend="pressEnd('x')">&larr;</button>
+    <button id="btn-center" onclick="penToggle()" title="Alza/abbassa la penna">PENNA</button>
+    <button id="btn-right"
+      onmousedown="pressStart('x','right')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
+      ontouchstart="pressStart('x','right')" ontouchend="pressEnd('x')">&rarr;</button>
+    <button id="btn-turn-right" class="turn" onclick="fullTurn('x','right')" title="X: un giro di pignone">1 giro</button>
+    <button id="btn-down"
+      onmousedown="pressStart('y','down')" onmouseup="pressEnd('y')" onmouseleave="pressEnd('y')"
+      ontouchstart="pressStart('y','down')" ontouchend="pressEnd('y')">&darr;</button>
+    <button id="btn-turn-down" class="turn" onclick="fullTurn('y','down')" title="Y: un giro di pignone">1 giro</button>
+  </div>
+  <div class="motor-row">
+    <button onclick="motorStop()" style="border-color:#ef4444;color:#ef4444">STOP</button>
+  </div>
+  <p class="hint" style="text-align:center" id="scale-hint">--</p>
+
+  <div class="axis-card" style="margin-top:16px">
+    <h3>Penna (servo)</h3>
+    <div class="slider-label"><span>Angolo</span><b id="lbl-pen-live">90&deg;</b></div>
+    <input type="range" id="pen-live" min="0" max="180" step="1" value="90" oninput="penLive()">
+    <div class="axis-run">
+      <button onclick="penSet('up')">Alza</button>
+      <button onclick="penSet('down')">Abbassa</button>
+      <button onclick="penSet('free')">Rilascia</button>
+    </div>
+    <p class="hint">Lo slider muove il servo mentre lo trascini, senza salvare niente: serve a
+      vedere dove va la penna. Gli angoli di lavoro alzata/abbassata si tarano e si salvano
+      nella tab Motore. "Rilascia" toglie il segnale e il servo si ammorbidisce.</p>
+  </div>
+
+  <div class="axis-card" style="margin-top:12px">
+    <h3>Prove d'insieme</h3>
+    <div class="axis-run">
+      <button onclick="demoStart('square')">Quadrato 40 mm</button>
+      <button onclick="demoStart('circle')">Cerchio R20</button>
+    </div>
+    <button class="primary danger" onclick="demoStop()">INTERROMPI PROVA</button>
+    <p class="status" id="demo-status" style="margin-top:8px">--</p>
+    <p class="hint">Le stesse due figure dei file in <code>gcode/test/</code>, penna compresa,
+      eseguite dal firmware senza G-code. Partono dal punto in cui si trova la macchina
+      e ci tornano alla fine. Servono a vedere i due assi e il servo muoversi insieme:
+      non usarle a macchina smontata se i motori sono vincolati a qualcosa.</p>
+  </div>
+
+  <div class="led-row">
+    <button id="btn-led-red" onclick="toggleLed('red')">Rosso</button>
+    <button id="btn-led-yellow" onclick="toggleLed('yellow')">Giallo</button>
+    <button id="btn-led-green" onclick="toggleLed('green')">Verde</button>
+  </div>
+  <p class="status" id="led-status">Stato LED: --</p>
+  <p class="status" id="motor-status">Motori: --</p>
+</section>
+
+<section id="motore" class="tab-content">
+  <div class="axis-card">
+    <h3>Trasmissione</h3>
+    <label for="micro" style="margin-top:4px">Microstep impostati sul driver</label>
+    <select id="micro" onchange="pushMicro()">
+      <option value="1">1 (passo intero)</option>
+      <option value="2">1/2</option>
+      <option value="4">1/4</option>
+      <option value="8">1/8</option>
+      <option value="16" selected>1/16</option>
+      <option value="32">1/32</option>
+    </select>
+    <p class="hint" id="micro-hint">--</p>
+    <p class="hint">Dipende dai ponticelli MS1/MS2/MS3 sul driver, che il firmware non pu&ograve;
+      leggere. Se non sei sicuro: premi "1 giro" e guarda l'albero. Se fa un giro intero il
+      valore &egrave; giusto; se fa un sedicesimo di giro i ponticelli sono a 1/16 e qui c'&egrave; 1.</p>
+  </div>
+
+  <div class="axes" style="margin-top:12px">
+    <div class="axis-card">
+      <h3>Asse X</h3>
+      <p class="pins">STEP D4 &middot; DIR D26</p>
+
+      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-x">20 mm/s</b></div>
+      <input type="range" id="feed-x" min="1" max="100" step="1" value="20"
+             oninput="showFeed('x')" onchange="pushAxis('x')">
+
+      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-x">3 mm</b></div>
+      <input type="range" id="ramp-x" min="0" max="20" step="1" value="3"
+             oninput="showRamp('x')" onchange="pushAxis('x')">
+
+      <div class="slider-label"><span>Distanza (mm)</span></div>
+      <input type="number" id="mm-x" min="0.1" max="400" step="0.1" value="50">
+
+      <div class="check" style="margin-top:12px">
+        <input type="checkbox" id="inv-x" onchange="pushInvert('x')">
+        <label for="inv-x" style="margin:0;font-size:.8rem">Inverti direzione</label>
+      </div>
+
+      <div class="axis-run">
+        <button onclick="runAxis('x','left')">&larr;</button>
+        <button onclick="runAxis('x','right')">&rarr;</button>
+      </div>
+      <p class="status" id="stat-x" style="margin-top:8px;font-size:.78rem">--</p>
+    </div>
+
+    <div class="axis-card">
+      <h3>Asse Y</h3>
+      <p class="pins">STEP D25 &middot; DIR D33</p>
+
+      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-y">20 mm/s</b></div>
+      <input type="range" id="feed-y" min="1" max="100" step="1" value="20"
+             oninput="showFeed('y')" onchange="pushAxis('y')">
+
+      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-y">3 mm</b></div>
+      <input type="range" id="ramp-y" min="0" max="20" step="1" value="3"
+             oninput="showRamp('y')" onchange="pushAxis('y')">
+
+      <div class="slider-label"><span>Distanza (mm)</span></div>
+      <input type="number" id="mm-y" min="0.1" max="400" step="0.1" value="50">
+
+      <div class="check" style="margin-top:12px">
+        <input type="checkbox" id="inv-y" onchange="pushInvert('y')">
+        <label for="inv-y" style="margin:0;font-size:.8rem">Inverti direzione</label>
+      </div>
+
+      <div class="axis-run">
+        <button onclick="runAxis('y','down')">&darr;</button>
+        <button onclick="runAxis('y','up')">&uarr;</button>
+      </div>
+      <p class="status" id="stat-y" style="margin-top:8px;font-size:.78rem">--</p>
+    </div>
+  </div>
+
+  <div class="axis-card" style="margin-top:12px">
+    <h3>Penna (servo) &mdash; taratura</h3>
+    <p class="pins">Segnale D32 &middot; alimentazione 5 V separata</p>
+
+    <div class="slider-label"><span>Angolo penna alzata</span><b id="lbl-pen-up">90&deg;</b></div>
+    <input type="range" id="pen-up" min="0" max="180" step="1" value="90"
+           oninput="showPen()" onchange="pushPen('up')">
+
+    <div class="slider-label"><span>Angolo penna abbassata</span><b id="lbl-pen-down">60&deg;</b></div>
+    <input type="range" id="pen-down" min="0" max="180" step="1" value="60"
+           oninput="showPen()" onchange="pushPen('down')">
+
+    <div class="axis-run">
+      <button onclick="penSet('up')">Alza</button>
+      <button onclick="penSet('down')">Abbassa</button>
+      <button onclick="penSet('free')">Rilascia</button>
+    </div>
+    <p class="hint">Rilasciando uno slider il servo si porta subito su quell'angolo, cos&igrave;
+      puoi tarare guardando la penna. Questi due valori sono salvati in memoria non volatile
+      e sono quelli che usano il pulsante PENNA e le prove d'insieme.</p>
+  </div>
+
+  <p class="hint"><b>Velocit&agrave;</b>: millimetri al secondo di corsa del carrello.
+    <b>Accelerazione</b>: su quanti millimetri si distribuisce la partenza &mdash; 0 significa
+    partenza secca. Senza rampa un motore fermo pu&ograve; non riuscire ad agganciare la
+    frequenza di partenza e limitarsi a vibrare.</p>
+
+  <button class="primary" onclick="runBoth()">Esegui i due assi insieme</button>
+  <button class="primary danger" onclick="motorStop()">STOP</button>
+
+  <div class="check">
+    <input type="checkbox" id="drv-enabled" checked onchange="pushEnable()">
+    <label for="drv-enabled" style="margin:0">Driver abilitati (ENABLE condiviso su D27)</label>
+  </div>
+  <p class="hint">Togliendo la spunta entrambi i motori si sbloccano e smettono di scaldare.</p>
+
+  <details>
+    <summary>Test pin (misura col multimetro)</summary>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('stepx',0)">STEP X 0 V</button>
+      <button class="ghost" onclick="setPin('stepx',1)">STEP X 3,3 V</button>
+      <button class="ghost" onclick="setPin('dirx',0)">DIR X 0 V</button>
+      <button class="ghost" onclick="setPin('dirx',1)">DIR X 3,3 V</button>
+    </div>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('stepy',0)">STEP Y 0 V</button>
+      <button class="ghost" onclick="setPin('stepy',1)">STEP Y 3,3 V</button>
+      <button class="ghost" onclick="setPin('diry',0)">DIR Y 0 V</button>
+      <button class="ghost" onclick="setPin('diry',1)">DIR Y 3,3 V</button>
+    </div>
+    <div class="presets">
+      <button class="ghost" onclick="setPin('en',0)">EN 0 V</button>
+      <button class="ghost" onclick="setPin('en',1)">EN 3,3 V</button>
+    </div>
+    <p class="hint">Puntale nero su un GND, puntale rosso sul pin del driver. Dopo aver usato
+      questi pulsanti riporta gli STEP a 0 V, altrimenti il primo impulso successivo va perso.</p>
+  </details>
+</section>
+
+<section id="wifi" class="tab-content">
+  <div class="info" id="wifi-info">Caricamento stato rete...</div>
+  <form id="wifi-form">
+    <label>Nome rete (SSID)</label>
+    <input type="text" id="ssid" placeholder="Nome rete Wi-Fi" required>
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Nuova password">
+    <button type="submit" class="primary">Salva e riavvia</button>
+  </form>
+  <p class="msg" id="wifi-msg"></p>
+</section>
+
+<section id="log" class="tab-content">
+  <pre id="log-view" class="log-view"></pre>
+</section>
+
+<section id="codice" class="tab-content">
+  <div class="placeholder">
+    Caricamento G-code via web: disponibile dopo il test di motori e servo (Step 2-3 della pipeline).
+  </div>
+</section>
+
+<script>
+function $(id){return document.getElementById(id);}
+
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+    document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+    btn.classList.add('active');
+    $(btn.dataset.tab).classList.add('active');
+  });
+});
+
+var holdTimer = null;
+var holding = null;
+
+function pressStart(axis, dir){
+  holding = null;
+  fetch('/api/motor/step?axis=' + axis + '&dir=' + dir);
+  holdTimer = setTimeout(function(){
+    holding = axis;
+    fetch('/api/motor/start?axis=' + axis + '&dir=' + dir);
+  }, 300);
+}
+
+function pressEnd(axis){
+  clearTimeout(holdTimer);
+  if (holding === axis) {
+    fetch('/api/motor/stop?axis=' + axis);
+    holding = null;
+  }
+}
+
+function fullTurn(axis, dir){
+  fetch('/api/motor/full?axis=' + axis + '&dir=' + dir);
+}
+
+function showFeed(a){ $('lbl-feed-' + a).textContent = $('feed-' + a).value + ' mm/s'; }
+function showRamp(a){
+  var v = $('ramp-' + a).value;
+  $('lbl-ramp-' + a).textContent = (v === '0') ? 'nessuna' : v + ' mm';
+}
+
+function pushAxis(a){
+  fetch('/api/motor/config?axis=' + a + '&feed=' + $('feed-' + a).value + '&ramp=' + $('ramp-' + a).value);
+}
+
+function pushMicro(){
+  fetch('/api/motor/micro?n=' + $('micro').value);
+}
+
+function showPen(){
+  $('lbl-pen-up').textContent = $('pen-up').value + '°';
+  $('lbl-pen-down').textContent = $('pen-down').value + '°';
+}
+
+function pushPen(which){
+  fetch('/api/pen/config?up=' + $('pen-up').value + '&down=' + $('pen-down').value + '&preview=' + which);
+}
+
+// Lo slider dal vivo manda al massimo una richiesta ogni 70 ms: il server web
+// dell'ESP32 serve una richiesta alla volta, e trascinando il dito ne partirebbero
+// decine al secondo che si accodano, facendo arrivare il servo in ritardo sul dito.
+var penTimer = null;
+var penPending = null;
+
+function penLive(){
+  var v = $('pen-live').value;
+  $('lbl-pen-live').textContent = v + '°';
+  penPending = v;
+  if (penTimer) return;
+  penTimer = setInterval(function(){
+    if (penPending === null){ clearInterval(penTimer); penTimer = null; return; }
+    fetch('/api/pen/angle?deg=' + penPending);
+    penPending = null;
+  }, 70);
+}
+
+function penSet(state){
+  fetch('/api/pen/set?state=' + state);
+}
+
+function penToggle(){
+  fetch('/api/pen/set?state=toggle');
+}
+
+function demoStart(what){
+  fetch('/api/demo/start?what=' + what);
+}
+
+function demoStop(){
+  fetch('/api/demo/stop');
+}
+
+function pushInvert(a){
+  fetch('/api/motor/invert?axis=' + a + '&on=' + ($('inv-' + a).checked ? 1 : 0));
+}
+
+function pushEnable(){
+  fetch('/api/motor/enable?on=' + ($('drv-enabled').checked ? 1 : 0));
+}
+
+function setPin(pin, level){
+  fetch('/api/pin/set?pin=' + pin + '&level=' + level);
+}
+
+function runAxis(axis, dir){
+  fetch('/api/motor/run?axis=' + axis + '&dir=' + dir + '&mm=' + $('mm-' + axis).value);
+}
+
+function runBoth(){
+  fetch('/api/motor/run?axis=x&dir=right&mm=' + $('mm-x').value);
+  fetch('/api/motor/run?axis=y&dir=up&mm=' + $('mm-y').value);
+}
+
+function motorStop(){
+  fetch('/api/motor/stop?axis=both');
+}
+
+function applyAxis(a, s){
+  $('stat-' + a).textContent = s.done + ' passi · ' +
+    (s.remaining < 0 ? 'continuo' : s.remaining + ' mancanti');
+  if (document.activeElement !== $('feed-' + a)) {
+    $('feed-' + a).value = s.feed;
+    showFeed(a);
+  }
+  if (document.activeElement !== $('ramp-' + a)) {
+    $('ramp-' + a).value = s.ramp;
+    showRamp(a);
+  }
+  $('inv-' + a).checked = s.invert;
+}
+
+function applyState(s){
+  $('btn-led-red').classList.toggle('on', s.ledRed);
+  $('btn-led-yellow').classList.toggle('on', s.ledYellow);
+  $('btn-led-green').classList.toggle('on', s.ledGreen);
+  $('led-status').textContent = 'LED — Rosso: ' + (s.ledRed ? 'ACCESO' : 'SPENTO') +
+    ' | Giallo: ' + (s.ledYellow ? 'ACCESO' : 'SPENTO') +
+    ' | Verde: ' + (s.ledGreen ? 'ACCESO' : 'SPENTO');
+
+  var moving = (s.x.remaining !== 0 || s.y.remaining !== 0);
+  $('motor-status').textContent = 'Motori: ' + (moving ? 'in movimento' : 'fermi') +
+    ' | driver ' + (s.enabled ? 'abilitati' : 'disabilitati');
+
+  applyAxis('x', s.x);
+  applyAxis('y', s.y);
+
+  if (document.activeElement !== $('micro')) $('micro').value = s.micro;
+  var perStep = s.mmPerRev / (200 * s.micro);
+  $('micro-hint').textContent = 'Un giro di pignone = ' + s.mmPerRev.toFixed(4) +
+    ' mm · ' + s.spmm.toFixed(3) + ' passi/mm · un passo = ' + perStep.toFixed(4) + ' mm';
+  $('scale-hint').textContent = 'Un click = ' + perStep.toFixed(4) +
+    ' mm · "1 giro" = ' + s.mmPerRev.toFixed(1) + ' mm';
+
+  if (document.activeElement !== $('pen-up')) $('pen-up').value = s.pen.up;
+  if (document.activeElement !== $('pen-down')) $('pen-down').value = s.pen.down;
+  if (document.activeElement !== $('pen-live') && penPending === null) {
+    $('pen-live').value = s.pen.angle;
+    $('lbl-pen-live').textContent = s.pen.angle + '°';
+  }
+  showPen();
+  $('btn-center').textContent = (s.pen.state === 'down') ? 'GIÙ' : 'PENNA';
+  $('drv-enabled').checked = s.enabled;
+  $('demo-status').textContent = s.demo.running
+    ? ('In corso: ' + s.demo.name + ' — tratto ' + s.demo.step + '/' + s.demo.total)
+    : 'Nessuna prova in corso';
+
+  $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
+}
+
+function refreshState(){
+  fetch('/api/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
+}
+
+function toggleLed(color){
+  fetch('/api/led/' + color + '/toggle').then(function(r){return r.json();}).then(applyState);
+}
+
+function refreshLog(){
+  fetch('/api/log').then(function(r){return r.text();}).then(function(t){
+    var el = $('log-view');
+    var atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 20);
+    el.textContent = t;
+    if (atBottom) el.scrollTop = el.scrollHeight;
+  }).catch(function(){});
+}
+
+$('wifi-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var ssid = $('ssid').value;
+  var password = $('password').value;
+  $('wifi-msg').textContent = 'Salvataggio in corso...';
+  fetch('/api/wifi/save', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'ssid=' + encodeURIComponent(ssid) + '&password=' + encodeURIComponent(password)
+  }).then(function(r){return r.text();}).then(function(t){
+    $('wifi-msg').textContent = t + ' Il dispositivo si riavvierà tra pochi secondi.';
+  }).catch(function(){
+    $('wifi-msg').textContent = 'Errore di rete durante il salvataggio.';
+  });
+});
+
+refreshState();
+setInterval(refreshState, 2000);
+refreshLog();
+setInterval(refreshLog, 3000);
+</script>
+</body>
+</html>
+)rawliteral";
+
+String axisJson(const Motor& m) {
+  return "{\"remaining\":" + String((long)m.stepsRemaining) +
+         ",\"done\":" + String((long)m.stepsDone) +
+         ",\"feed\":" + String(m.feedMmS, 1) +
+         ",\"ramp\":" + String(m.rampMm, 1) +
+         ",\"invert\":" + String(m.invert ? "true" : "false") + "}";
+}
+
+void sendStateJson() {
+  String json = "{\"ledRed\":" + String(ledRedState ? "true" : "false") +
+                ",\"ledYellow\":" + String(ledYellowState ? "true" : "false") +
+                ",\"ledGreen\":" + String(ledGreenState ? "true" : "false") +
+                ",\"enabled\":" + String(driverEnabled ? "true" : "false") +
+                ",\"micro\":" + String(microsteps) +
+                ",\"spmm\":" + String(stepsPerMm(), 4) +
+                ",\"mmPerRev\":" + String(MM_PER_REV, 4) +
+                ",\"pen\":{\"up\":" + String(penUpDeg) +
+                ",\"down\":" + String(penDownDeg) +
+                ",\"angle\":" + String(penAngle) +
+                ",\"state\":\"" + penState + "\"}" +
+                ",\"demo\":{\"running\":" + String(demoKind != DEMO_NONE ? "true" : "false") +
+                ",\"name\":\"" + String(demoName(demoKind)) + "\"" +
+                ",\"step\":" + String(demoIndex) +
+                ",\"total\":" + String(demoTotal(demoKind)) + "}" +
+                ",\"x\":" + axisJson(motorX) +
+                ",\"y\":" + axisJson(motorY) +
+                ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
+                ",\"ssid\":\"" + (apMode ? String(AP_SSID) : WiFi.SSID()) + "\"" +
+                ",\"ip\":\"" + (apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString()) + "\"}";
+  server.send(200, "application/json", json);
+}
+
+void handleRoot() {
+  server.send_P(200, "text/html", PAGE_HTML);
+}
+
+void handleLedRedToggle() {
+  ledRedState = !ledRedState;
+  digitalWrite(RED_LED_PIN, ledRedState ? HIGH : LOW);
+  logMsg(String("LED rosso: ") + (ledRedState ? "ACCESO" : "SPENTO"));
+  sendStateJson();
+}
+
+void handleLedYellowToggle() {
+  ledYellowState = !ledYellowState;
+  digitalWrite(YELLOW_LED_PIN, ledYellowState ? HIGH : LOW);
+  logMsg(String("LED giallo: ") + (ledYellowState ? "ACCESO" : "SPENTO"));
+  sendStateJson();
+}
+
+void handleLedGreenToggle() {
+  ledGreenState = !ledGreenState;
+  digitalWrite(GREEN_LED_PIN, ledGreenState ? HIGH : LOW);
+  logMsg(String("LED verde: ") + (ledGreenState ? "ACCESO" : "SPENTO"));
+  sendStateJson();
+}
+
+void handleState() {
+  sendStateJson();
+}
+
+void handleLog() {
+  server.send(200, "text/plain", logBuffer);
+}
+
+// "right" e "up" sono il verso positivo, tutto il resto è negativo.
+int dirFromArg() {
+  String d = server.arg("dir");
+  return (d == "right" || d == "up") ? 1 : -1;
+}
+
+bool wantsX() {
+  String a = server.arg("axis");
+  return a != "y";
+}
+
+bool wantsY() {
+  String a = server.arg("axis");
+  return a == "y" || a == "both";
+}
+
+void pulseStepOnce(Motor& m) {
+  digitalWrite(m.stepPin, HIGH);
+  delayMicroseconds(STEP_PULSE_US);
+  digitalWrite(m.stepPin, LOW);
+}
+
+// Un click = un microstep. A 1/16 sono 0,029 mm: non si vede muovere niente,
+// ed è voluto — è la risoluzione della macchina, e serve per misurare il gioco.
+void handleMotorStep() {
+  int d = dirFromArg();
+  if (motorX.stepsRemaining != 0 || motorY.stepsRemaining != 0) {
+    server.send(409, "text/plain", "movimento in corso");
+    return;
+  }
+  if (wantsX()) { setDir(motorX, d); pulseStepOnce(motorX); }
+  if (wantsY()) { setDir(motorY, d); pulseStepOnce(motorY); }
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorStart() {
+  int d = dirFromArg();
+  demoStop("interrotta da un comando manuale");
+  logMsg("Motore " + server.arg("axis") + ": avvio continuo verso " + (d > 0 ? "+" : "-"));
+  if (wantsX()) startMove(motorX, d, -1);
+  if (wantsY()) startMove(motorY, d, -1);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorStop() {
+  demoStop("interrotta dallo STOP");
+  if (wantsX()) stopMotor(motorX);
+  if (wantsY()) stopMotor(motorY);
+  logMsg("Motori: stop (X " + String((long)motorX.stepsDone) + " passi, Y " + String((long)motorY.stepsDone) + " passi)");
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorFull() {
+  int d = dirFromArg();
+  demoStop("interrotta da un comando manuale");
+  logMsg("Motore " + server.arg("axis") + ": un giro di pignone (" + String(stepsPerRev()) +
+         " passi = " + String(MM_PER_REV, 2) + " mm) verso " + (d > 0 ? "+" : "-"));
+  if (wantsX()) startMove(motorX, d, stepsPerRev());
+  if (wantsY()) startMove(motorY, d, stepsPerRev());
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorRun() {
+  int d = dirFromArg();
+  float mm = server.arg("mm").toFloat();
+  if (mm < 0.01f) mm = 0.01f;
+  if (mm > 400.0f) mm = 400.0f;
+  long steps = lroundf(mm * stepsPerMm());
+  if (steps < 1) steps = 1;
+
+  demoStop("interrotta da un comando manuale");
+  logMsg("Test " + server.arg("axis") + ": " + String(mm, 2) + " mm = " + String(steps) +
+         " passi verso " + (d > 0 ? "+" : "-"));
+  if (wantsX()) startMove(motorX, d, steps);
+  if (wantsY()) startMove(motorY, d, steps);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorConfig() {
+  float feed = server.arg("feed").toFloat();
+  float ramp = server.arg("ramp").toFloat();
+  if (feed < FEED_MIN_MM_S) feed = FEED_MIN_MM_S;
+  if (feed > FEED_MAX_MM_S) feed = FEED_MAX_MM_S;
+  if (ramp < RAMP_MIN_MM) ramp = RAMP_MIN_MM;
+  if (ramp > RAMP_MAX_MM) ramp = RAMP_MAX_MM;
+
+  bool isY = (server.arg("axis") == "y");
+  Motor& m = isY ? motorY : motorX;
+  m.feedMmS = feed;
+  m.rampMm = ramp;
+  motorPrefs.putFloat(isY ? "feedY" : "feedX", feed);
+  motorPrefs.putFloat(isY ? "rampY" : "rampX", ramp);
+  logMsg("Motore " + String(m.name) + ": " + String(feed, 1) + " mm/s (" +
+         String((long)(feed * stepsPerMm())) + " passi/s), rampa " + String(ramp, 1) + " mm");
+  server.send(200, "text/plain", "ok");
+}
+
+// Il numero di microstep non cambia nessun pin (a meno che MS_PIN sia definito):
+// descrive al firmware com'è cablato il driver, e da lì discendono passi/mm,
+// il giro completo e la conversione delle velocità.
+void handleMotorMicro() {
+  int n = server.arg("n").toInt();
+  if (n != 1 && n != 2 && n != 4 && n != 8 && n != 16 && n != 32) {
+    server.send(400, "text/plain", "microstep non valido");
+    return;
+  }
+  stopMotor(motorX);
+  stopMotor(motorY);
+  demoStop("interrotta dal cambio microstep");
+  microsteps = n;
+  motorPrefs.putInt("micro", microsteps);
+#if MS_PIN >= 0
+  digitalWrite(MS_PIN, (microsteps > 1) ? HIGH : LOW);
+#endif
+  logMsg("Microstep: 1/" + String(microsteps) + " -> " + String(stepsPerMm(), 3) +
+         " passi/mm, un giro = " + String(stepsPerRev()) + " passi");
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePenSet() {
+  String st = server.arg("state");
+  if (st == "toggle") st = (penState == "down") ? "up" : "down";
+  if (st != "up" && st != "down" && st != "free") {
+    server.send(400, "text/plain", "stato sconosciuto");
+    return;
+  }
+  setPen(st);
+  server.send(200, "text/plain", "ok");
+}
+
+// Angolo libero dallo slider: muove il servo e basta, non tocca i due valori
+// salvati di penna alzata e abbassata.
+void handlePenAngle() {
+  int deg = constrain(server.arg("deg").toInt(), 0, 180);
+  servoWriteDeg(deg);
+  penState = "man";
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePenConfig() {
+  int up = server.arg("up").toInt();
+  int down = server.arg("down").toInt();
+  penUpDeg = constrain(up, 0, 180);
+  penDownDeg = constrain(down, 0, 180);
+  motorPrefs.putInt("penUp", penUpDeg);
+  motorPrefs.putInt("penDn", penDownDeg);
+
+  // Portarsi subito sull'angolo appena regolato, per poter tarare a vista.
+  String preview = server.arg("preview");
+  if (preview == "up" || preview == "down") setPen(preview);
+  else logMsg("Penna: alzata " + String(penUpDeg) + " gradi, abbassata " + String(penDownDeg) + " gradi");
+
+  server.send(200, "text/plain", "ok");
+}
+
+void handleDemoStart() {
+  String what = server.arg("what");
+  int kind = (what == "circle") ? DEMO_CIRCLE : (what == "square") ? DEMO_SQUARE : DEMO_NONE;
+  if (kind == DEMO_NONE) {
+    server.send(400, "text/plain", "prova sconosciuta");
+    return;
+  }
+  if (!driverEnabled) {
+    server.send(409, "text/plain", "driver disabilitati");
+    return;
+  }
+  stopMotor(motorX);
+  stopMotor(motorY);
+  demoStart(kind);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleDemoStop() {
+  demoStop("interrotta dall'utente");
+  stopMotor(motorX);
+  stopMotor(motorY);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorInvert() {
+  bool isY = (server.arg("axis") == "y");
+  Motor& m = isY ? motorY : motorX;
+  m.invert = (server.arg("on") == "1");
+  stopMotor(m); // il verso non va cambiato a movimento in corso
+  motorPrefs.putBool(isY ? "invY" : "invX", m.invert);
+  logMsg("Motore " + String(m.name) + ": direzione " + (m.invert ? "invertita" : "normale"));
+  server.send(200, "text/plain", "ok");
+}
+
+void handleMotorEnable() {
+  bool on = (server.arg("on") == "1");
+  setDriverEnabled(on);
+  logMsg(String("Driver A4988: ") + (on ? "abilitati (ENABLE basso)" : "disabilitati (ENABLE alto)"));
+  server.send(200, "text/plain", "ok");
+}
+
+// Forza un singolo pin a un livello fisso, per poterlo misurare col multimetro
+// direttamente sul pin del driver. Qualsiasi movimento in corso viene fermato.
+void handlePinSet() {
+  String pin = server.arg("pin");
+  bool high = (server.arg("level") == "1");
+  demoStop("interrotta dal test pin");
+  stopMotor(motorX);
+  stopMotor(motorY);
+
+  if (pin == "stepx") {
+    digitalWrite(STEP_X_PIN, high ? HIGH : LOW);
+  } else if (pin == "dirx") {
+    digitalWrite(DIR_X_PIN, high ? HIGH : LOW);
+  } else if (pin == "stepy") {
+    digitalWrite(STEP_Y_PIN, high ? HIGH : LOW);
+  } else if (pin == "diry") {
+    digitalWrite(DIR_Y_PIN, high ? HIGH : LOW);
+  } else if (pin == "en") {
+    setDriverEnabled(!high); // ENABLE attivo basso: livello alto = driver disabilitati
+  } else {
+    server.send(400, "text/plain", "pin sconosciuto");
+    return;
+  }
+
+  logMsg("Test pin: " + pin + " forzato a " + (high ? "3.3 V (alto)" : "0 V (basso)"));
+  server.send(200, "text/plain", "ok");
+}
+
+void handleWifiSave() {
+  String ssid = server.arg("ssid");
+  String password = server.arg("password");
+  if (ssid.length() == 0) {
+    server.send(400, "text/plain", "SSID richiesto.");
+    return;
+  }
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", password);
+  server.send(200, "text/plain", "Credenziali salvate.");
+  delay(500);
+  ESP.restart();
+}
+
+void handleNotFound() {
+  server.send(404, "text/plain", "Non trovato");
+}
+
+bool connectToWifi(const String& ssid, const String& password) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+    delay(250);
+  }
+  return WiFi.status() == WL_CONNECTED;
+}
+
+void startSetupAP() {
+  apMode = true;
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+}
+
+void setupOTA() {
+  ArduinoOTA.setHostname("cnc2d");
+  ArduinoOTA.setPassword(AP_PASS);
+  ArduinoOTA.onStart([]() {
+    demoStop("interrotta dall'aggiornamento OTA");
+    stopMotor(motorX); // niente passi durante un aggiornamento firmware
+    stopMotor(motorY);
+    logMsg("OTA: aggiornamento avviato...");
+  });
+  ArduinoOTA.onEnd([]() {
+    logMsg("OTA: completato, riavvio.");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    logMsg("OTA errore [" + String((int)error) + "]");
+  });
+  ArduinoOTA.begin();
+}
+
+void setupStepTimer() {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  stepTimer = timerBegin(1000000); // base dei tempi a 1 MHz
+  timerAttachInterrupt(stepTimer, &onStepTick);
+  timerAlarm(stepTimer, 1000000 / TICK_HZ, true, 0);
+#else
+  stepTimer = timerBegin(0, 80, true); // 80 MHz / 80 = 1 MHz
+  timerAttachInterrupt(stepTimer, &onStepTick, true);
+  timerAlarmWrite(stepTimer, 1000000 / TICK_HZ, true);
+  timerAlarmEnable(stepTimer);
+#endif
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(YELLOW_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(YELLOW_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
+
+  // I pin STEP vanno portati a livello basso il prima possibile: finché restano
+  // ingressi flottanti raccolgono rumore e il driver lo interpreta come passi.
+  pinMode(STEP_X_PIN, OUTPUT);
+  pinMode(STEP_Y_PIN, OUTPUT);
+  digitalWrite(STEP_X_PIN, LOW);
+  digitalWrite(STEP_Y_PIN, LOW);
+  pinMode(DIR_X_PIN, OUTPUT);
+  pinMode(DIR_Y_PIN, OUTPUT);
+  digitalWrite(DIR_X_PIN, LOW);
+  digitalWrite(DIR_Y_PIN, LOW);
+  pinMode(ENABLE_PIN, OUTPUT);
+  setDriverEnabled(true);
+
+  motorPrefs.begin("motor_cfg", false);
+  motorX.invert = motorPrefs.getBool("invX", false);
+  motorY.invert = motorPrefs.getBool("invY", false);
+  motorX.feedMmS = motorPrefs.getFloat("feedX", 20.0f);
+  motorY.feedMmS = motorPrefs.getFloat("feedY", 20.0f);
+  motorX.rampMm = motorPrefs.getFloat("rampX", 3.0f);
+  motorY.rampMm = motorPrefs.getFloat("rampY", 3.0f);
+  microsteps = motorPrefs.getInt("micro", 16);
+  penUpDeg = motorPrefs.getInt("penUp", 90);
+  penDownDeg = motorPrefs.getInt("penDn", 60);
+  penAngle = penUpDeg;
+
+#if MS_PIN >= 0
+  pinMode(MS_PIN, OUTPUT);
+  digitalWrite(MS_PIN, (microsteps > 1) ? HIGH : LOW);
+#endif
+
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcAttach(SERVO_PIN, SERVO_FREQ, SERVO_RES_BITS);
+#else
+  ledcSetup(SERVO_CHANNEL, SERVO_FREQ, SERVO_RES_BITS);
+  ledcAttachPin(SERVO_PIN, SERVO_CHANNEL);
+#endif
+  servoRelease();
+
+  setupStepTimer();
+  logMsg("Trasmissione: un giro = " + String(MM_PER_REV, 4) + " mm, microstep 1/" +
+         String(microsteps) + ", " + String(stepsPerMm(), 3) + " passi/mm");
+
+  prefs.begin("wifi_cfg", false);
+  String savedSsid = prefs.getString("ssid", "");
+  String savedPass = prefs.getString("pass", "");
+
+  if (savedSsid.length() > 0 && connectToWifi(savedSsid, savedPass)) {
+    apMode = false;
+    logMsg("Connesso. IP: " + WiFi.localIP().toString());
+    setupOTA();
+    logMsg("mDNS/OTA attivi: http://cnc2d.local");
+  } else {
+    logMsg("Connessione Wi-Fi fallita o non configurata. Avvio modalita' configurazione.");
+    startSetupAP();
+    logMsg("Connettiti alla rete '" + String(AP_SSID) + "' e apri http://" + WiFi.softAPIP().toString());
+  }
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/api/led/red/toggle", HTTP_GET, handleLedRedToggle);
+  server.on("/api/led/yellow/toggle", HTTP_GET, handleLedYellowToggle);
+  server.on("/api/led/green/toggle", HTTP_GET, handleLedGreenToggle);
+  server.on("/api/state", HTTP_GET, handleState);
+  server.on("/api/log", HTTP_GET, handleLog);
+  server.on("/api/motor/step", HTTP_GET, handleMotorStep);
+  server.on("/api/motor/start", HTTP_GET, handleMotorStart);
+  server.on("/api/motor/stop", HTTP_GET, handleMotorStop);
+  server.on("/api/motor/full", HTTP_GET, handleMotorFull);
+  server.on("/api/motor/run", HTTP_GET, handleMotorRun);
+  server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
+  server.on("/api/motor/micro", HTTP_GET, handleMotorMicro);
+  server.on("/api/pen/set", HTTP_GET, handlePenSet);
+  server.on("/api/pen/angle", HTTP_GET, handlePenAngle);
+  server.on("/api/pen/config", HTTP_GET, handlePenConfig);
+  server.on("/api/demo/start", HTTP_GET, handleDemoStart);
+  server.on("/api/demo/stop", HTTP_GET, handleDemoStop);
+  server.on("/api/motor/invert", HTTP_GET, handleMotorInvert);
+  server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
+  server.on("/api/pin/set", HTTP_GET, handlePinSet);
+  server.on("/api/wifi/save", HTTP_POST, handleWifiSave);
+  server.onNotFound(handleNotFound);
+  server.begin();
+}
+
+void loop() {
+  // I passi ora li emette il timer hardware, quindi qui resta solo quello che
+  // può permettersi di aspettare: il web, l'OTA e l'avanzamento della prova
+  // d'insieme da un tratto al successivo.
+  server.handleClient();
+  ArduinoOTA.handle();
+  serviceDemo();
+}
