@@ -62,6 +62,44 @@ const int SERVO_US_MAX = 2500;
 #define WIFI_CONNECT_TIMEOUT_MS 15000
 
 // ---------------------------------------------------------------------------
+// Tipi
+// ---------------------------------------------------------------------------
+// Stanno qui, prima di qualunque funzione, e non vicino al codice che li usa:
+// l'IDE Arduino genera da solo i prototipi di tutte le funzioni dello sketch e
+// li inserisce subito prima della PRIMA funzione del file. Un tipo definito più
+// in basso non esisterebbe ancora quando il prototipo generato lo nomina, e il
+// compilatore si ferma su "'Motor' was not declared in this scope" indicando la
+// riga della definizione, che a leggerla sembra corretta.
+
+// stepsRemaining: 0 = fermo, >0 = passi ancora da fare, -1 = rotazione continua.
+// acc/inc sono l'accumulatore a virgola fissa descritto sopra; li tocca l'ISR,
+// quindi ogni modifica dal lato web passa dalla sezione critica.
+struct Motor {
+  const char* name;
+  uint8_t stepPin;
+  uint8_t dirPin;
+  volatile long stepsRemaining;
+  volatile long stepsDone;
+  volatile uint32_t acc;
+  volatile uint32_t inc;
+  volatile uint32_t incTarget;
+  volatile long rampSteps;
+  volatile bool pulseOpen;
+  int dir;
+  float feedMmS;  // velocità impostata dall'utente
+  float rampMm;   // su quanti mm si distribuisce la partenza
+  bool invert;    // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
+};
+
+// op: 0 = fine, 1 = rapido, 2 = tratto di lavoro, 3 = penna su, 4 = penna giù, 5 = pausa
+struct DemoStep {
+  uint8_t op;
+  float x;
+  float y;
+};
+
+
+// ---------------------------------------------------------------------------
 // Meccanica: pignone e cremagliera
 // ---------------------------------------------------------------------------
 // Un giro di pignone avanza di un passo del dente per ogni dente, cioè pi*m*z.
@@ -123,26 +161,6 @@ int penUpDeg = 90;
 int penDownDeg = 60;
 int penAngle = 90;
 String penState = "free";
-
-// stepsRemaining: 0 = fermo, >0 = passi ancora da fare, -1 = rotazione continua.
-// acc/inc sono l'accumulatore a virgola fissa descritto sopra; li tocca l'ISR,
-// quindi ogni modifica dal lato web passa dalla sezione critica.
-struct Motor {
-  const char* name;
-  uint8_t stepPin;
-  uint8_t dirPin;
-  volatile long stepsRemaining;
-  volatile long stepsDone;
-  volatile uint32_t acc;
-  volatile uint32_t inc;
-  volatile uint32_t incTarget;
-  volatile long rampSteps;
-  volatile bool pulseOpen;
-  int dir;
-  float feedMmS;  // velocità impostata dall'utente
-  float rampMm;   // su quanti mm si distribuisce la partenza
-  bool invert;    // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
-};
 
 Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
 Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
@@ -312,13 +330,6 @@ const int DEMO_ARCS = 72; // il cerchio come poligono: un tratto ogni 5 gradi
 const float DEMO_FEED_MM_S = 12.0f;
 const float DEMO_RAPID_MM_S = 25.0f;
 const unsigned long DEMO_DWELL_MS = 300;
-
-// op: 0 = fine, 1 = rapido, 2 = tratto di lavoro, 3 = penna su, 4 = penna giù, 5 = pausa
-struct DemoStep {
-  uint8_t op;
-  float x;
-  float y;
-};
 
 int demoKind = DEMO_NONE;
 int demoIndex = 0;
