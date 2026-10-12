@@ -137,6 +137,27 @@ penna abbassata: rilasciando uno slider il servo si porta subito su quell'angolo
 regola guardando la penna invece che a tentativi. I due valori sono salvati in memoria non
 volatile e sono quelli che usano il pulsante PENNA e le prove d'insieme. Lo slider libero
 della tab Controllo serve invece a esplorare, e non salva niente.
+
+Il terzo slider, **Movimento morbido**, limita la velocità con cui il servo insegue
+l'angolo richiesto: da 1 a 20 gradi ogni 10 ms, con 0 che disattiva la rampa e torna al
+salto secco. Serve contro il brownout: un servo a cui si chiede un angolo lontano vede un
+errore grande e parte alla corrente di stallo (700 mA per un SG90, fino a 1,4 A per un
+MG90S), e su un'alimentazione condivisa quel gradino fa cadere il 5 V e resetta l'ESP32 —
+che smettendo di generare il PWM lascia il servo fermo a metà. Avvicinandosi di due gradi
+per volta l'errore resta piccolo e la corrente di picco con lui.
+
+**Non sostituisce un'alimentazione adeguata**, e va detto chiaramente: la rampa abbassa il
+picco, non il consumo totale, che anzi dura più a lungo. Se la sorgente non regge nemmeno
+la corrente di mantenimento non c'è impostazione che tenga. È però una diagnosi netta: se a
+1 grado per passo non si resetta e a 0 sì, il colpevole è la corrente ed è certificato.
+
+Limite noto della rampa: ripartendo da "Rilascia" la posizione reale della squadretta non la
+sa nessuno, perché un servo RC non ha retroazione leggibile. La rampa riparte dall'ultimo
+angolo comandato, che è la stima migliore disponibile; se nel frattempo la squadretta è
+stata mossa a mano, quel primo movimento resta secco.
+
+Le prove d'insieme tengono conto della rampa: aspettano che la penna sia **arrivata** prima
+di far ripartire i carrelli, e solo dopo scatta la pausa di assestamento da 300 ms.
 "Rilascia" toglie il segnale PWM e il servo si ammorbidisce, smettendo di consumare e
 scaldare. **All'accensione il servo parte rilasciato** e non si muove finché non glielo si
 chiede: un servo che va in battuta contro un vincolo meccanico appena riceve corrente

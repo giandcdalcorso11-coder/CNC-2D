@@ -162,6 +162,22 @@ int penDownDeg = 60;
 int penAngle = 90;
 String penState = "free";
 
+// Rampa del servo. Un servo a cui si chiede un angolo lontano vede un errore
+// grande e parte alla corrente di stallo: e' quello che faceva cadere il 5 V e
+// resettare l'ESP32. Avvicinandosi di pochi gradi per volta l'errore resta
+// piccolo e la corrente di picco con lui. servoSlewDeg = 0 disattiva la rampa
+// e torna al salto secco.
+// Limite noto: ripartendo da "rilasciato" la posizione reale della squadretta
+// non la sa nessuno, quindi la rampa parte dall'ultimo angolo comandato. Se nel
+// frattempo la squadretta e' stata mossa a mano, quel primo movimento e' secco
+// comunque: non c'e' retroazione da cui leggere dove si trova davvero.
+int servoSlewDeg = 2;                  // gradi per passo, salvato in NVS
+const unsigned long SERVO_SLEW_MS = 10; // intervallo fra un passo e il successivo
+int servoTargetDeg = 90;
+int servoCurrentDeg = 90;
+bool servoAttached = false;             // false = nessun impulso, servo morbido
+unsigned long servoLastStepMs = 0;
+
 Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
 Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
 
@@ -243,9 +259,11 @@ void setDir(Motor& m, int dir) {
   delayMicroseconds(DIR_SETUP_US);
 }
 
-void servoWriteDeg(int deg) {
+// Scrive davvero l'impulso: e' l'unico punto che tocca il PWM.
+void servoApply(int deg) {
   if (deg < 0) deg = 0;
   if (deg > 180) deg = 180;
+  servoCurrentDeg = deg;
   penAngle = deg;
   long us = SERVO_US_MIN + (long)(SERVO_US_MAX - SERVO_US_MIN) * deg / 180;
   uint32_t duty = (uint32_t)(us * (1UL << SERVO_RES_BITS) / 20000UL);
@@ -254,6 +272,7 @@ void servoWriteDeg(int deg) {
 #else
   ledcWrite(SERVO_CHANNEL, duty);
 #endif
+  servoAttached = true;
 }
 
 // Duty a zero: nessun impulso, il servo smette di tenere la posizione.
@@ -263,11 +282,42 @@ void servoRelease() {
 #else
   ledcWrite(SERVO_CHANNEL, 0);
 #endif
+  servoAttached = false;
+}
+
+// Chiede un angolo. Con la rampa attiva non lo applica subito: fissa il
+// bersaglio e ci arriva serviceServo(), un passo ogni SERVO_SLEW_MS.
+void servoGoTo(int deg) {
+  if (deg < 0) deg = 0;
+  if (deg > 180) deg = 180;
+  servoTargetDeg = deg;
+  if (servoSlewDeg <= 0) {
+    servoApply(deg);
+    return;
+  }
+  if (!servoAttached) servoApply(servoCurrentDeg); // riaggancia dove si era rimasti
+  servoLastStepMs = millis();
+}
+
+bool servoBusy() {
+  return servoAttached && servoCurrentDeg != servoTargetDeg;
+}
+
+void serviceServo() {
+  if (!servoAttached || servoSlewDeg <= 0) return;
+  if (servoCurrentDeg == servoTargetDeg) return;
+  unsigned long now = millis();
+  if (now - servoLastStepMs < SERVO_SLEW_MS) return;
+  servoLastStepMs = now;
+  int d = servoTargetDeg - servoCurrentDeg;
+  if (d > servoSlewDeg) d = servoSlewDeg;
+  else if (d < -servoSlewDeg) d = -servoSlewDeg;
+  servoApply(servoCurrentDeg + d);
 }
 
 void setPen(const String& state) {
-  if (state == "up") servoWriteDeg(penUpDeg);
-  else if (state == "down") servoWriteDeg(penDownDeg);
+  if (state == "up") servoGoTo(penUpDeg);
+  else if (state == "down") servoGoTo(penDownDeg);
   else servoRelease();
   penState = state;
   logMsg("Penna: " + state);
@@ -434,6 +484,10 @@ void demoStop(const char* why) {
 void serviceDemo() {
   if (demoKind == DEMO_NONE) return;
   if (motorX.stepsRemaining != 0 || motorY.stepsRemaining != 0) return;
+  // Con la rampa attiva la penna impiega un tempo che dipende dall'escursione:
+  // si aspetta che sia arrivata, e solo dopo parte la pausa di assestamento,
+  // che nella sequenza e' sempre il passo subito successivo.
+  if (servoBusy()) return;
   if (millis() < demoWaitUntil) return;
 
   DemoStep s;
@@ -448,8 +502,8 @@ void serviceDemo() {
   switch (s.op) {
     case 1: demoGoTo(s.x, s.y, DEMO_RAPID_MM_S); break;
     case 2: demoGoTo(s.x, s.y, DEMO_FEED_MM_S); break;
-    case 3: setPen("up"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
-    case 4: setPen("down"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+    case 3: setPen("up"); demoWaitUntil = 0; break;
+    case 4: setPen("down"); demoWaitUntil = 0; break;
     case 5: demoWaitUntil = millis() + DEMO_DWELL_MS; break;
   }
 }
@@ -570,9 +624,11 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
       <button onclick="penSet('down')">Abbassa</button>
       <button onclick="penSet('free')">Rilascia</button>
     </div>
+    <p class="status" id="pen-status" style="margin-top:8px">--</p>
     <p class="hint">Lo slider muove il servo mentre lo trascini, senza salvare niente: serve a
       vedere dove va la penna. Gli angoli di lavoro alzata/abbassata si tarano e si salvano
-      nella tab Motore. "Rilascia" toglie il segnale e il servo si ammorbidisce.</p>
+      nella tab Motore, insieme alla dolcezza del movimento. "Rilascia" toglie il segnale e
+      il servo si ammorbidisce.</p>
   </div>
 
   <div class="axis-card" style="margin-top:12px">
@@ -683,6 +739,11 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <div class="slider-label"><span>Angolo penna abbassata</span><b id="lbl-pen-down">60&deg;</b></div>
     <input type="range" id="pen-down" min="0" max="180" step="1" value="60"
            oninput="showPen()" onchange="pushPen('down')">
+
+    <div class="slider-label"><span>Movimento morbido</span><b id="lbl-slew">2&deg; ogni 10 ms</b></div>
+    <input type="range" id="slew" min="0" max="20" step="1" value="2"
+           oninput="showSlew()" onchange="pushSlew()">
+    <p class="hint" id="slew-hint">--</p>
 
     <div class="axis-run">
       <button onclick="penSet('up')">Alza</button>
@@ -803,6 +864,18 @@ function pushMicro(){
   fetch('/api/motor/micro?n=' + $('micro').value);
 }
 
+function showSlew(){
+  var v = parseInt($('slew').value, 10);
+  $('lbl-slew').textContent = (v === 0) ? "disattivato" : (v + "\u00B0 ogni 10 ms");
+  $('slew-hint').textContent = (v === 0)
+    ? "Salto secco: il servo parte alla corrente massima. E' la condizione che faceva cadere il 5 V."
+    : ("Circa " + (v * 100) + "\u00B0/s. Un'escursione di 30\u00B0 ci mette " + Math.round(300 / v) + " ms.");
+}
+
+function pushSlew(){
+  fetch('/api/pen/slew?deg=' + $('slew').value);
+}
+
 function showPen(){
   $('lbl-pen-up').textContent = $('pen-up').value + '°';
   $('lbl-pen-down').textContent = $('pen-down').value + '°';
@@ -909,6 +982,13 @@ function applyState(s){
 
   if (document.activeElement !== $('pen-up')) $('pen-up').value = s.pen.up;
   if (document.activeElement !== $('pen-down')) $('pen-down').value = s.pen.down;
+  if (document.activeElement !== $('slew')) $('slew').value = s.pen.slew;
+  showSlew();
+  $('pen-status').textContent = (s.pen.state === 'free')
+    ? "Servo rilasciato (nessun impulso)"
+    : (s.pen.moving
+        ? ("In movimento: " + s.pen.angle + "\u00B0 \u2192 " + s.pen.target + "\u00B0")
+        : ("Fermo a " + s.pen.angle + "\u00B0"));
   if (document.activeElement !== $('pen-live') && penPending === null) {
     $('pen-live').value = s.pen.angle;
     $('lbl-pen-live').textContent = s.pen.angle + '°';
@@ -984,6 +1064,9 @@ void sendStateJson() {
                 ",\"pen\":{\"up\":" + String(penUpDeg) +
                 ",\"down\":" + String(penDownDeg) +
                 ",\"angle\":" + String(penAngle) +
+                ",\"target\":" + String(servoTargetDeg) +
+                ",\"slew\":" + String(servoSlewDeg) +
+                ",\"moving\":" + String(servoBusy() ? "true" : "false") +
                 ",\"state\":\"" + penState + "\"}" +
                 ",\"demo\":{\"running\":" + String(demoKind != DEMO_NONE ? "true" : "false") +
                 ",\"name\":\"" + String(demoName(demoKind)) + "\"" +
@@ -1163,9 +1246,22 @@ void handlePenSet() {
 // Angolo libero dallo slider: muove il servo e basta, non tocca i due valori
 // salvati di penna alzata e abbassata.
 void handlePenAngle() {
-  int deg = constrain(server.arg("deg").toInt(), 0, 180);
-  servoWriteDeg(deg);
+  int deg = server.arg("deg").toInt();
+  servoGoTo(deg);
   penState = "man";
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePenSlew() {
+  int d = server.arg("deg").toInt();
+  if (d < 0) d = 0;
+  if (d > 20) d = 20;
+  servoSlewDeg = d;
+  motorPrefs.putInt("slew", servoSlewDeg);
+  if (servoSlewDeg == 0) logMsg("Servo: rampa disattivata, movimento secco");
+  else logMsg("Servo: rampa " + String(servoSlewDeg) + " gradi ogni " +
+              String(SERVO_SLEW_MS) + " ms (" + String(1000 / (long)SERVO_SLEW_MS * servoSlewDeg) +
+              " gradi/s)");
   server.send(200, "text/plain", "ok");
 }
 
@@ -1351,7 +1447,10 @@ void setup() {
   microsteps = motorPrefs.getInt("micro", 16);
   penUpDeg = motorPrefs.getInt("penUp", 90);
   penDownDeg = motorPrefs.getInt("penDn", 60);
+  servoSlewDeg = motorPrefs.getInt("slew", 2);
   penAngle = penUpDeg;
+  servoCurrentDeg = penUpDeg;
+  servoTargetDeg = penUpDeg;
 
 #if MS_PIN >= 0
   pinMode(MS_PIN, OUTPUT);
@@ -1401,6 +1500,7 @@ void setup() {
   server.on("/api/pen/set", HTTP_GET, handlePenSet);
   server.on("/api/pen/angle", HTTP_GET, handlePenAngle);
   server.on("/api/pen/config", HTTP_GET, handlePenConfig);
+  server.on("/api/pen/slew", HTTP_GET, handlePenSlew);
   server.on("/api/demo/start", HTTP_GET, handleDemoStart);
   server.on("/api/demo/stop", HTTP_GET, handleDemoStop);
   server.on("/api/motor/invert", HTTP_GET, handleMotorInvert);
@@ -1417,5 +1517,6 @@ void loop() {
   // d'insieme da un tratto al successivo.
   server.handleClient();
   ArduinoOTA.handle();
+  serviceServo();
   serviceDemo();
 }
