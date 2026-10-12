@@ -740,8 +740,8 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <input type="range" id="pen-down" min="0" max="180" step="1" value="60"
            oninput="showPen()" onchange="pushPen('down')">
 
-    <div class="slider-label"><span>Movimento morbido</span><b id="lbl-slew">2&deg; ogni 10 ms</b></div>
-    <input type="range" id="slew" min="0" max="20" step="1" value="2"
+    <div class="slider-label"><span>Passo della rampa &mdash; pi&ugrave; basso = pi&ugrave; morbido</span><b id="lbl-slew">2&deg;/10 ms</b></div>
+    <input type="range" id="slew" min="0" max="10" step="1" value="2"
            oninput="showSlew()" onchange="pushSlew()">
     <p class="hint" id="slew-hint">--</p>
 
@@ -866,10 +866,14 @@ function pushMicro(){
 
 function showSlew(){
   var v = parseInt($('slew').value, 10);
-  $('lbl-slew').textContent = (v === 0) ? "disattivato" : (v + "\u00B0 ogni 10 ms");
+  var nome = (v === 0) ? "salto secco"
+           : (v <= 2) ? "molto morbido"
+           : (v <= 5) ? "morbido" : "quasi secco";
+  $('lbl-slew').textContent = (v === 0) ? "0 \u2014 salto secco" : (v + "\u00B0/10 ms \u2014 " + nome);
   $('slew-hint').textContent = (v === 0)
-    ? "Salto secco: il servo parte alla corrente massima. E' la condizione che faceva cadere il 5 V."
-    : ("Circa " + (v * 100) + "\u00B0/s. Un'escursione di 30\u00B0 ci mette " + Math.round(300 / v) + " ms.");
+    ? "Il servo salta all'angolo richiesto alla corrente massima: e' la condizione che fa cadere il 5 V. Per la prova piu' dolce metti 1, non 10."
+    : ("Circa " + (v * 100) + "\u00B0/s. Un'escursione di 30\u00B0 ci mette " + Math.round(300 / v) +
+       " ms. Sopra i ~600\u00B0/s nessun servo riesce comunque a seguire, quindi da li' in su equivale al salto secco.");
 }
 
 function pushSlew(){
