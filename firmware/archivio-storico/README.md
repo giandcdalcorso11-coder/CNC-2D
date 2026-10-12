@@ -23,7 +23,7 @@ questi sono solo copie storiche di sola lettura.
 | `12-velocita-rampa-per-asse.ino` | 2026-09-20 | `c1dc9b9` | Velocità e rampa impostabili per ogni asse con slider dedicati |
 | `13-inversione-direzione-nvs.ino` | 2026-09-20 | `31f8d99` | Inversione direzione per asse, salvata in NVS |
 | `14-servo-pen-lift.ino` | 2026-09-21 | `df3703b` | Servo pen-lift su D32 con due posizioni calibrate |
-| `15-microstep-millimetri-prove-insieme.ino` | 2026-10-12 | `5ceb3cf` | Passi da timer hardware a 20 kHz, interfaccia in mm con microstep impostabili, slider servo dal vivo e prove quadrato/cerchio |
+| `15-microstep-millimetri-prove-insieme.ino` | 2026-10-12 | `58bf47c` | Passi da timer hardware a 20 kHz, interfaccia in mm con microstep impostabili, slider servo dal vivo e prove quadrato/cerchio |
 
 ## Nota sul primissimo test (Ep. 1 — il primo LED)
 
