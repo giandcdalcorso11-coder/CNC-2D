@@ -1,4 +1,4 @@
-// CNC-2D — Dashboard web ESP32 (Step 1-2: LED, Wi-Fi via web, OTA, log, controllo motori X/Y)
+// CNC-2D — Dashboard web ESP32 (banco di collaudo: LED, Wi-Fi via web, OTA, log, assi X/Y, servo)
 //
 // Librerie usate: tutte incluse nel core ESP32 per Arduino (nessuna installazione extra):
 // WiFi.h, WebServer.h, Preferences.h, ArduinoOTA.h
@@ -13,11 +13,27 @@
 // Una volta connesso alla rete di casa, i successivi aggiornamenti firmware possono
 // essere caricati via Wi-Fi (OTA) da Arduino IDE selezionando la porta di rete "cnc2d",
 // senza bisogno del cavo USB. Password OTA: la stessa dell'Access Point di emergenza.
+//
+// DUE CAMBIAMENTI STRUTTURALI RISPETTO ALLE VERSIONI PRECEDENTI:
+//
+// 1. I passi non sono più generati dentro loop(). Con i microstep attivi la frequenza
+//    sale a qualche migliaio di impulsi al secondo, e server.handleClient() può bloccare
+//    il loop per centinaia di millisecondi: ogni blocco diventava un buco nel treno di
+//    impulsi, cioè passi persi. Ora gli impulsi li emette un timer hardware a 20 kHz,
+//    che il web non può interrompere.
+//
+// 2. L'interfaccia parla in millimetri, non in passi. Il legame fra i due lo danno
+//    pignone e cremagliera: un giro di pignone (modulo 1,5, 20 denti) vale
+//    pi * m * z = 94,2478 mm. Con microstep 1/16 fanno 33,953 passi/mm. Il numero di
+//    microstep è impostabile dalla tab Motore perché dipende dai ponticelli MS1/MS2/MS3
+//    sul driver, ed è l'unica cosa che il firmware non può leggere da solo.
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
 #include <ArduinoOTA.h>
+#include <math.h>
+#include "soc/gpio_struct.h" // scrittura diretta sui registri GPIO dentro l'interruzione
 
 #define RED_LED_PIN 2
 #define YELLOW_LED_PIN 19
@@ -30,6 +46,12 @@
 #define ENABLE_PIN 27 // condiviso tra i due driver
 #define SERVO_PIN 32
 
+// Se i tre ponticelli MS1/MS2/MS3 sono stati messi in parallelo e portati a un GPIO
+// dell'ESP32 invece che fissi a 5 V, metti qui quel GPIO: il firmware lo porta alto
+// per 1/16 e basso per il passo intero. Lasciando -1 non viene pilotato nessun pin
+// e il valore impostato dalla pagina serve solo ai conti (caso dei ponticelli fissi).
+#define MS_PIN -1
+
 // Servo standard: 50 Hz, impulso 500-2500 us per 0-180 gradi.
 #define SERVO_FREQ 50
 #define SERVO_RES_BITS 16
@@ -38,17 +60,48 @@ const int SERVO_US_MIN = 500;
 const int SERVO_US_MAX = 2500;
 
 #define WIFI_CONNECT_TIMEOUT_MS 15000
-#define STEPS_PER_REV 200
 
-const unsigned long STEP_PULSE_US = 10;
+// ---------------------------------------------------------------------------
+// Meccanica: pignone e cremagliera
+// ---------------------------------------------------------------------------
+// Un giro di pignone avanza di un passo del dente per ogni dente, cioè pi*m*z.
+// Non dipende dal numero di denti del pignone solo come numero: cambiandolo
+// cambia sia la corsa per giro sia la risoluzione, quindi è qui e non sparso.
+const float GEAR_MODULE_MM = 1.5f;
+const int GEAR_TEETH = 20;
+const float MM_PER_REV = 3.14159265f * GEAR_MODULE_MM * GEAR_TEETH; // 94,2478 mm
+const int FULL_STEPS_PER_REV = 200;                                 // motore 1,8 gradi
+
+// Microstep impostati sul driver con i ponticelli. Salvato in NVS.
+int microsteps = 16;
+
+float stepsPerMm() {
+  return (float)FULL_STEPS_PER_REV * (float)microsteps / MM_PER_REV;
+}
+
+long stepsPerRev() {
+  return (long)FULL_STEPS_PER_REV * (long)microsteps;
+}
+
+// ---------------------------------------------------------------------------
+// Generazione passi: timer hardware
+// ---------------------------------------------------------------------------
+// Il timer scatta a TICK_HZ e, a ogni scatto, ogni asse somma il proprio
+// incremento a un accumulatore a virgola fissa: quando l'accumulatore supera
+// 65536 esce un impulso. Così la frequenza media è esatta anche quando non è
+// un sottomultiplo del tick, invece di essere arrotondata al tick più vicino.
+#define TICK_HZ 20000
+#define ACC_ONE 65536UL
+
 const unsigned long DIR_SETUP_US = 20;
+const unsigned long STEP_PULSE_US = 10; // solo per l'impulso singolo emesso fuori dall'ISR
 
-// Limiti volutamente conservativi: il motore è stato validato fino a 500 passi/s,
-// qui ci fermiamo a 400 per restare abbondantemente dentro il margine.
-const long SPS_MIN = 10;
-const long SPS_MAX = 400;
-const long RAMP_MIN = 0;
-const long RAMP_MAX = 200;
+// Limiti dell'interfaccia, in millimetri al secondo.
+const float FEED_MIN_MM_S = 1.0f;
+const float FEED_MAX_MM_S = 100.0f;
+const float RAMP_MIN_MM = 0.0f;
+const float RAMP_MAX_MM = 20.0f;
+const long STEPS_PER_SEC_MAX = 6000; // tetto di sicurezza a valle di qualunque conto
 
 const char* AP_SSID = "CNC-2D-Setup";
 const char* AP_PASS = "cnc2d2026";
@@ -61,32 +114,41 @@ bool ledRedState = false;
 bool ledYellowState = false;
 bool ledGreenState = false;
 bool apMode = false;
-bool driverEnabled = true;
+volatile bool driverEnabled = true;
 
-// Stato penna: "up", "down" o "free" (nessun impulso, servo morbido).
-// All'accensione si parte da "free": un servo che va in battuta contro un
-// vincolo meccanico appena dato corrente assorbe moltissimo.
+// Stato penna: "up", "down", "free" (nessun impulso, servo morbido) o "man" (angolo
+// impostato a mano dallo slider). All'accensione si parte da "free": un servo che va
+// in battuta contro un vincolo meccanico appena dato corrente assorbe moltissimo.
 int penUpDeg = 90;
 int penDownDeg = 60;
+int penAngle = 90;
 String penState = "free";
 
 // stepsRemaining: 0 = fermo, >0 = passi ancora da fare, -1 = rotazione continua.
-// rampSteps: numero di passi su cui si distribuisce la rampa di partenza, 0 = partenza secca.
+// acc/inc sono l'accumulatore a virgola fissa descritto sopra; li tocca l'ISR,
+// quindi ogni modifica dal lato web passa dalla sezione critica.
 struct Motor {
   const char* name;
   uint8_t stepPin;
   uint8_t dirPin;
-  long stepsRemaining;
-  long stepsDone;
+  volatile long stepsRemaining;
+  volatile long stepsDone;
+  volatile uint32_t acc;
+  volatile uint32_t inc;
+  volatile uint32_t incTarget;
+  volatile long rampSteps;
+  volatile bool pulseOpen;
   int dir;
-  unsigned long lastStepMicros;
-  long stepsPerSec;
-  long rampSteps;
-  bool invert; // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
+  float feedMmS;  // velocità impostata dall'utente
+  float rampMm;   // su quanti mm si distribuisce la partenza
+  bool invert;    // inverte il verso di DIR, per allineare l'asse alle frecce senza rifare i cavi
 };
 
-Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 1, 0, 67, 40, false};
-Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 1, 0, 67, 40, false};
+Motor motorX = {"X", STEP_X_PIN, DIR_X_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
+Motor motorY = {"Y", STEP_Y_PIN, DIR_Y_PIN, 0, 0, 0, 0, 0, 0, false, 1, 20.0f, 3.0f, false};
+
+portMUX_TYPE stepMux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t* stepTimer = NULL;
 
 String logBuffer = "";
 const size_t LOG_MAX_LEN = 4000;
@@ -98,6 +160,55 @@ void logMsg(const String& msg) {
   if (logBuffer.length() > LOG_MAX_LEN) {
     logBuffer = logBuffer.substring(logBuffer.length() - LOG_MAX_LEN);
   }
+}
+
+// Scrittura diretta sul registro GPIO: dentro un'interruzione digitalWrite()
+// non è garantita in IRAM e costa troppo.
+static inline void IRAM_ATTR pinFastHigh(uint8_t p) {
+  if (p < 32) GPIO.out_w1ts = (1UL << p);
+  else GPIO.out1_w1ts.val = (1UL << (p - 32));
+}
+
+static inline void IRAM_ATTR pinFastLow(uint8_t p) {
+  if (p < 32) GPIO.out_w1tc = (1UL << p);
+  else GPIO.out1_w1tc.val = (1UL << (p - 32));
+}
+
+// Durante la rampa il primo passo parte 4 volte più lento della velocità
+// impostata e si accelera linearmente fino ad essa.
+static inline void IRAM_ATTR applyRamp(Motor& m) {
+  if (m.rampSteps > 0 && m.stepsDone < m.rampSteps) {
+    uint32_t den = (uint32_t)(m.rampSteps + 3 * (m.rampSteps - m.stepsDone));
+    uint32_t v = (uint32_t)(((uint64_t)m.incTarget * (uint64_t)m.rampSteps) / den);
+    m.inc = (v == 0) ? 1 : v;
+  } else {
+    m.inc = m.incTarget;
+  }
+}
+
+void IRAM_ATTR serviceMotorISR(Motor& m) {
+  // L'impulso aperto al tick precedente va chiuso sempre, anche se nel frattempo
+  // il movimento è stato fermato: un pin STEP lasciato alto fa perdere l'impulso dopo.
+  if (m.pulseOpen) {
+    pinFastLow(m.stepPin);
+    m.pulseOpen = false;
+  }
+  if (m.stepsRemaining == 0 || !driverEnabled) return;
+
+  m.acc += m.inc;
+  if (m.acc < ACC_ONE) return;
+  m.acc -= ACC_ONE;
+
+  pinFastHigh(m.stepPin);
+  m.pulseOpen = true;
+  m.stepsDone++;
+  if (m.stepsRemaining > 0) m.stepsRemaining--;
+  applyRamp(m);
+}
+
+void IRAM_ATTR onStepTick() {
+  serviceMotorISR(motorX);
+  serviceMotorISR(motorY);
 }
 
 void setDriverEnabled(bool on) {
@@ -117,6 +228,7 @@ void setDir(Motor& m, int dir) {
 void servoWriteDeg(int deg) {
   if (deg < 0) deg = 0;
   if (deg > 180) deg = 180;
+  penAngle = deg;
   long us = SERVO_US_MIN + (long)(SERVO_US_MAX - SERVO_US_MIN) * deg / 180;
   uint32_t duty = (uint32_t)(us * (1UL << SERVO_RES_BITS) / 20000UL);
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -143,48 +255,192 @@ void setPen(const String& state) {
   logMsg("Penna: " + state);
 }
 
-void pulseStep(Motor& m) {
-  digitalWrite(m.stepPin, HIGH);
-  delayMicroseconds(STEP_PULSE_US);
-  digitalWrite(m.stepPin, LOW);
-}
+// Avvio movimento in passi, con velocità già convertita in passi al secondo.
+void startMoveSteps(Motor& m, int dir, long steps, long stepsPerSec, long rampSteps) {
+  if (stepsPerSec < 1) stepsPerSec = 1;
+  if (stepsPerSec > STEPS_PER_SEC_MAX) stepsPerSec = STEPS_PER_SEC_MAX;
 
-// Durante la rampa il primo passo parte 4 volte più lento della velocità
-// impostata e si accelera linearmente fino ad essa.
-unsigned long currentIntervalUs(const Motor& m) {
-  unsigned long target = 1000000UL / (unsigned long)m.stepsPerSec;
-  if (m.rampSteps <= 0 || m.stepsDone >= m.rampSteps) return target;
-  return target * (m.rampSteps + 3 * (m.rampSteps - m.stepsDone)) / m.rampSteps;
-}
+  uint32_t inc = (uint32_t)(((uint64_t)stepsPerSec * ACC_ONE) / TICK_HZ);
+  if (inc == 0) inc = 1;
+  if (inc > ACC_ONE) inc = ACC_ONE; // al massimo un passo per tick
 
-void startMove(Motor& m, int dir, long steps) {
   setDir(m, dir);
+
+  portENTER_CRITICAL(&stepMux);
   m.stepsDone = 0;
+  m.acc = 0;
+  m.incTarget = inc;
+  m.rampSteps = rampSteps;
+  applyRamp(m);
   m.stepsRemaining = steps;
-  m.lastStepMicros = micros();
+  portEXIT_CRITICAL(&stepMux);
 }
 
-void serviceMotor(Motor& m) {
-  if (m.stepsRemaining == 0 || !driverEnabled) return;
+// Avvio movimento usando la velocità e la rampa configurate per quell'asse.
+void startMove(Motor& m, int dir, long steps) {
+  float spmm = stepsPerMm();
+  startMoveSteps(m, dir, steps, (long)(m.feedMmS * spmm), (long)(m.rampMm * spmm));
+}
 
-  unsigned long now = micros();
-  if (now - m.lastStepMicros < currentIntervalUs(m)) return;
+void stopMotor(Motor& m) {
+  portENTER_CRITICAL(&stepMux);
+  m.stepsRemaining = 0;
+  portEXIT_CRITICAL(&stepMux);
+}
 
-  m.lastStepMicros = now;
-  pulseStep(m);
-  m.stepsDone++;
+// ---------------------------------------------------------------------------
+// Prove d'insieme: quadrato e cerchio
+// ---------------------------------------------------------------------------
+// Ricalcano gcode/test/quadrato-e-cerchio-penna.gcode — stessa sequenza, stesse
+// pause, stessi movimenti di penna — ma senza interprete G-code: servono solo a
+// vedere i due assi e il servo muoversi insieme prima di montare la macchina.
+// Le coordinate sono in millimetri e diventano passi al momento dell'esecuzione,
+// quindi restano giuste qualunque microstep sia impostato.
+//
+// L'origine della prova è il punto in cui si trova la macchina quando si preme il
+// pulsante, e la posizione è tenuta in PASSI, non in millimetri: così l'ultimo
+// movimento torna esattamente al punto di partenza invece di accumulare l'errore
+// di arrotondamento di ogni tratto.
 
-  if (m.stepsRemaining > 0) {
-    m.stepsRemaining--;
-    if (m.stepsRemaining == 0) {
-      logMsg("Motore " + String(m.name) + ": movimento completato, " + String(m.stepsDone) + " passi emessi");
+#define DEMO_NONE 0
+#define DEMO_SQUARE 1
+#define DEMO_CIRCLE 2
+
+const float DEMO_SIDE_MM = 40.0f;
+const float DEMO_RADIUS_MM = 20.0f;
+const int DEMO_ARCS = 72; // il cerchio come poligono: un tratto ogni 5 gradi
+const float DEMO_FEED_MM_S = 12.0f;
+const float DEMO_RAPID_MM_S = 25.0f;
+const unsigned long DEMO_DWELL_MS = 300;
+
+// op: 0 = fine, 1 = rapido, 2 = tratto di lavoro, 3 = penna su, 4 = penna giù, 5 = pausa
+struct DemoStep {
+  uint8_t op;
+  float x;
+  float y;
+};
+
+int demoKind = DEMO_NONE;
+int demoIndex = 0;
+long demoPosX = 0;
+long demoPosY = 0;
+unsigned long demoWaitUntil = 0;
+
+int demoTotal(int kind) {
+  if (kind == DEMO_SQUARE) return 12;
+  if (kind == DEMO_CIRCLE) return 9 + DEMO_ARCS;
+  return 0;
+}
+
+const char* demoName(int kind) {
+  if (kind == DEMO_SQUARE) return "quadrato 40 mm";
+  if (kind == DEMO_CIRCLE) return "cerchio R20";
+  return "nessuna";
+}
+
+bool demoStepAt(int kind, int i, DemoStep& s) {
+  s.x = 0;
+  s.y = 0;
+  if (kind == DEMO_SQUARE) {
+    switch (i) {
+      case 0: s.op = 3; return true;                            // penna su
+      case 1: s.op = 5; return true;                            // pausa
+      case 2: s.op = 1; return true;                            // rapido all'origine
+      case 3: s.op = 4; return true;                            // penna giù
+      case 4: s.op = 5; return true;
+      case 5: s.op = 2; s.x = DEMO_SIDE_MM; return true;        // lato inferiore
+      case 6: s.op = 2; s.x = DEMO_SIDE_MM; s.y = DEMO_SIDE_MM; return true;
+      case 7: s.op = 2; s.y = DEMO_SIDE_MM; return true;
+      case 8: s.op = 2; return true;                            // ritorno all'origine
+      case 9: s.op = 3; return true;
+      case 10: s.op = 5; return true;
+      default: s.op = 0; return true;
     }
   }
+  if (kind == DEMO_CIRCLE) {
+    if (i == 0) { s.op = 3; return true; }
+    if (i == 1) { s.op = 5; return true; }
+    if (i == 2) { s.op = 1; s.x = DEMO_RADIUS_MM; return true; } // sul bordo
+    if (i == 3) { s.op = 4; return true; }
+    if (i == 4) { s.op = 5; return true; }
+    if (i >= 5 && i < 5 + DEMO_ARCS) {
+      int k = i - 4; // 1..DEMO_ARCS, antiorario come nel G-code
+      float a = 2.0f * 3.14159265f * (float)k / (float)DEMO_ARCS;
+      s.op = 2;
+      s.x = DEMO_RADIUS_MM * cosf(a);
+      s.y = DEMO_RADIUS_MM * sinf(a);
+      return true;
+    }
+    if (i == 5 + DEMO_ARCS) { s.op = 3; return true; }
+    if (i == 6 + DEMO_ARCS) { s.op = 5; return true; }
+    if (i == 7 + DEMO_ARCS) { s.op = 1; return true; }          // ritorno al centro
+    s.op = 0;
+    return true;
+  }
+  s.op = 0;
+  return true;
 }
 
-void serviceMotors() {
-  serviceMotor(motorX);
-  serviceMotor(motorY);
+// Movimento coordinato: i due assi partono insieme e arrivano insieme, perché
+// ciascuno riceve la frequenza che gli serve per coprire la propria parte nello
+// stesso tempo. Niente rampa qui: a 12 mm/s il motore parte a 32 passi interi al
+// secondo, che aggancia da fermo, e una rampa diversa sui due assi storcerebbe il
+// tratto proprio nei primi millimetri.
+void demoGoTo(float x, float y, float feed) {
+  float spmm = stepsPerMm();
+  long tx = lroundf(x * spmm);
+  long ty = lroundf(y * spmm);
+  long dxs = tx - demoPosX;
+  long dys = ty - demoPosY;
+  demoPosX = tx;
+  demoPosY = ty;
+  if (dxs == 0 && dys == 0) return;
+
+  float dxmm = (float)dxs / spmm;
+  float dymm = (float)dys / spmm;
+  float dist = sqrtf(dxmm * dxmm + dymm * dymm);
+  float secs = dist / feed;
+  if (secs < 0.001f) secs = 0.001f;
+
+  if (dxs != 0) startMoveSteps(motorX, dxs > 0 ? 1 : -1, labs(dxs), (long)(fabsf((float)dxs) / secs), 0);
+  if (dys != 0) startMoveSteps(motorY, dys > 0 ? 1 : -1, labs(dys), (long)(fabsf((float)dys) / secs), 0);
+}
+
+void demoStart(int kind) {
+  demoKind = kind;
+  demoIndex = 0;
+  demoPosX = 0;
+  demoPosY = 0;
+  demoWaitUntil = 0;
+  logMsg(String("Prova d'insieme: avvio ") + demoName(kind));
+}
+
+void demoStop(const char* why) {
+  if (demoKind != DEMO_NONE) logMsg(String("Prova d'insieme: ") + why);
+  demoKind = DEMO_NONE;
+}
+
+void serviceDemo() {
+  if (demoKind == DEMO_NONE) return;
+  if (motorX.stepsRemaining != 0 || motorY.stepsRemaining != 0) return;
+  if (millis() < demoWaitUntil) return;
+
+  DemoStep s;
+  demoStepAt(demoKind, demoIndex, s);
+  if (s.op == 0) {
+    logMsg(String("Prova d'insieme: ") + demoName(demoKind) + " completata");
+    demoKind = DEMO_NONE;
+    return;
+  }
+  demoIndex++;
+
+  switch (s.op) {
+    case 1: demoGoTo(s.x, s.y, DEMO_RAPID_MM_S); break;
+    case 2: demoGoTo(s.x, s.y, DEMO_FEED_MM_S); break;
+    case 3: setPen("up"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+    case 4: setPen("down"); demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+    case 5: demoWaitUntil = millis() + DEMO_DWELL_MS; break;
+  }
 }
 
 const char PAGE_HTML[] PROGMEM = R"rawliteral(
@@ -243,7 +499,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   .axis-run button{flex:1;padding:9px 0;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);cursor:pointer;font-size:1rem;}
 
   form label,.field label{display:block;margin:12px 0 4px;font-size:.9rem;color:var(--muted);}
-  input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
+  input[type=text],input[type=password],input[type=number],select{width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#0e0e11;color:var(--text);}
   .axis-card input[type=number]{padding:7px;font-size:.9rem;}
   button.primary{margin-top:16px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:1rem;cursor:pointer;}
   button.danger{background:var(--danger);}
@@ -271,11 +527,11 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 
 <section id="controllo" class="tab-content active">
   <div class="pad">
-    <button id="btn-turn-up" class="turn" onclick="fullTurn('y','up')" title="Y: un giro completo">360&deg;</button>
+    <button id="btn-turn-up" class="turn" onclick="fullTurn('y','up')" title="Y: un giro di pignone">1 giro</button>
     <button id="btn-up"
       onmousedown="pressStart('y','up')" onmouseup="pressEnd('y')" onmouseleave="pressEnd('y')"
       ontouchstart="pressStart('y','up')" ontouchend="pressEnd('y')">&uarr;</button>
-    <button id="btn-turn-left" class="turn" onclick="fullTurn('x','left')" title="X: un giro completo">360&deg;</button>
+    <button id="btn-turn-left" class="turn" onclick="fullTurn('x','left')" title="X: un giro di pignone">1 giro</button>
     <button id="btn-left"
       onmousedown="pressStart('x','left')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
       ontouchstart="pressStart('x','left')" ontouchend="pressEnd('x')">&larr;</button>
@@ -283,15 +539,45 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
     <button id="btn-right"
       onmousedown="pressStart('x','right')" onmouseup="pressEnd('x')" onmouseleave="pressEnd('x')"
       ontouchstart="pressStart('x','right')" ontouchend="pressEnd('x')">&rarr;</button>
-    <button id="btn-turn-right" class="turn" onclick="fullTurn('x','right')" title="X: un giro completo">360&deg;</button>
+    <button id="btn-turn-right" class="turn" onclick="fullTurn('x','right')" title="X: un giro di pignone">1 giro</button>
     <button id="btn-down"
       onmousedown="pressStart('y','down')" onmouseup="pressEnd('y')" onmouseleave="pressEnd('y')"
       ontouchstart="pressStart('y','down')" ontouchend="pressEnd('y')">&darr;</button>
-    <button id="btn-turn-down" class="turn" onclick="fullTurn('y','down')" title="Y: un giro completo">360&deg;</button>
+    <button id="btn-turn-down" class="turn" onclick="fullTurn('y','down')" title="Y: un giro di pignone">1 giro</button>
   </div>
   <div class="motor-row">
     <button onclick="motorStop()" style="border-color:#ef4444;color:#ef4444">STOP</button>
   </div>
+  <p class="hint" style="text-align:center" id="scale-hint">--</p>
+
+  <div class="axis-card" style="margin-top:16px">
+    <h3>Penna (servo)</h3>
+    <div class="slider-label"><span>Angolo</span><b id="lbl-pen-live">90&deg;</b></div>
+    <input type="range" id="pen-live" min="0" max="180" step="1" value="90" oninput="penLive()">
+    <div class="axis-run">
+      <button onclick="penSet('up')">Alza</button>
+      <button onclick="penSet('down')">Abbassa</button>
+      <button onclick="penSet('free')">Rilascia</button>
+    </div>
+    <p class="hint">Lo slider muove il servo mentre lo trascini, senza salvare niente: serve a
+      vedere dove va la penna. Gli angoli di lavoro alzata/abbassata si tarano e si salvano
+      nella tab Motore. "Rilascia" toglie il segnale e il servo si ammorbidisce.</p>
+  </div>
+
+  <div class="axis-card" style="margin-top:12px">
+    <h3>Prove d'insieme</h3>
+    <div class="axis-run">
+      <button onclick="demoStart('square')">Quadrato 40 mm</button>
+      <button onclick="demoStart('circle')">Cerchio R20</button>
+    </div>
+    <button class="primary danger" onclick="demoStop()">INTERROMPI PROVA</button>
+    <p class="status" id="demo-status" style="margin-top:8px">--</p>
+    <p class="hint">Le stesse due figure dei file in <code>gcode/test/</code>, penna compresa,
+      eseguite dal firmware senza G-code. Partono dal punto in cui si trova la macchina
+      e ci tornano alla fine. Servono a vedere i due assi e il servo muoversi insieme:
+      non usarle a macchina smontata se i motori sono vincolati a qualcosa.</p>
+  </div>
+
   <div class="led-row">
     <button id="btn-led-red" onclick="toggleLed('red')">Rosso</button>
     <button id="btn-led-yellow" onclick="toggleLed('yellow')">Giallo</button>
@@ -302,21 +588,38 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 </section>
 
 <section id="motore" class="tab-content">
-  <div class="axes">
+  <div class="axis-card">
+    <h3>Trasmissione</h3>
+    <label for="micro" style="margin-top:4px">Microstep impostati sul driver</label>
+    <select id="micro" onchange="pushMicro()">
+      <option value="1">1 (passo intero)</option>
+      <option value="2">1/2</option>
+      <option value="4">1/4</option>
+      <option value="8">1/8</option>
+      <option value="16" selected>1/16</option>
+      <option value="32">1/32</option>
+    </select>
+    <p class="hint" id="micro-hint">--</p>
+    <p class="hint">Dipende dai ponticelli MS1/MS2/MS3 sul driver, che il firmware non pu&ograve;
+      leggere. Se non sei sicuro: premi "1 giro" e guarda l'albero. Se fa un giro intero il
+      valore &egrave; giusto; se fa un sedicesimo di giro i ponticelli sono a 1/16 e qui c'&egrave; 1.</p>
+  </div>
+
+  <div class="axes" style="margin-top:12px">
     <div class="axis-card">
       <h3>Asse X</h3>
       <p class="pins">STEP D4 &middot; DIR D26</p>
 
-      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-sps-x">67 p/s</b></div>
-      <input type="range" id="sps-x" min="10" max="400" step="1" value="67"
-             oninput="showSps('x')" onchange="pushAxis('x')">
+      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-x">20 mm/s</b></div>
+      <input type="range" id="feed-x" min="1" max="100" step="1" value="20"
+             oninput="showFeed('x')" onchange="pushAxis('x')">
 
-      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-x">40 passi</b></div>
-      <input type="range" id="ramp-x" min="0" max="200" step="5" value="40"
+      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-x">3 mm</b></div>
+      <input type="range" id="ramp-x" min="0" max="20" step="1" value="3"
              oninput="showRamp('x')" onchange="pushAxis('x')">
 
-      <div class="slider-label"><span>Passi</span></div>
-      <input type="number" id="steps-x" min="1" max="20000" value="200">
+      <div class="slider-label"><span>Distanza (mm)</span></div>
+      <input type="number" id="mm-x" min="0.1" max="400" step="0.1" value="50">
 
       <div class="check" style="margin-top:12px">
         <input type="checkbox" id="inv-x" onchange="pushInvert('x')">
@@ -334,16 +637,16 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
       <h3>Asse Y</h3>
       <p class="pins">STEP D25 &middot; DIR D33</p>
 
-      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-sps-y">67 p/s</b></div>
-      <input type="range" id="sps-y" min="10" max="400" step="1" value="67"
-             oninput="showSps('y')" onchange="pushAxis('y')">
+      <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-y">20 mm/s</b></div>
+      <input type="range" id="feed-y" min="1" max="100" step="1" value="20"
+             oninput="showFeed('y')" onchange="pushAxis('y')">
 
-      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-y">40 passi</b></div>
-      <input type="range" id="ramp-y" min="0" max="200" step="5" value="40"
+      <div class="slider-label"><span>Accelerazione</span><b id="lbl-ramp-y">3 mm</b></div>
+      <input type="range" id="ramp-y" min="0" max="20" step="1" value="3"
              oninput="showRamp('y')" onchange="pushAxis('y')">
 
-      <div class="slider-label"><span>Passi</span></div>
-      <input type="number" id="steps-y" min="1" max="20000" value="200">
+      <div class="slider-label"><span>Distanza (mm)</span></div>
+      <input type="number" id="mm-y" min="0.1" max="400" step="0.1" value="50">
 
       <div class="check" style="margin-top:12px">
         <input type="checkbox" id="inv-y" onchange="pushInvert('y')">
@@ -359,7 +662,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   </div>
 
   <div class="axis-card" style="margin-top:12px">
-    <h3>Penna (servo)</h3>
+    <h3>Penna (servo) &mdash; taratura</h3>
     <p class="pins">Segnale D32 &middot; alimentazione 5 V separata</p>
 
     <div class="slider-label"><span>Angolo penna alzata</span><b id="lbl-pen-up">90&deg;</b></div>
@@ -376,14 +679,14 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
       <button onclick="penSet('free')">Rilascia</button>
     </div>
     <p class="hint">Rilasciando uno slider il servo si porta subito su quell'angolo, cos&igrave;
-      puoi tarare guardando la penna. "Rilascia" toglie il segnale: il servo si ammorbidisce e
-      smette di scaldare. All'accensione parte rilasciato, non si muove finch&eacute; non glielo chiedi.</p>
+      puoi tarare guardando la penna. Questi due valori sono salvati in memoria non volatile
+      e sono quelli che usano il pulsante PENNA e le prove d'insieme.</p>
   </div>
 
-  <p class="hint"><b>Velocit&agrave;</b>: passi al secondo (200 passi = un giro).
-    <b>Accelerazione</b>: su quanti passi si distribuisce la partenza &mdash; 0 significa partenza
-    secca, valori alti una partenza pi&ugrave; dolce. Senza rampa un motore fermo pu&ograve; non riuscire
-    ad agganciare la frequenza di partenza e limitarsi a vibrare.</p>
+  <p class="hint"><b>Velocit&agrave;</b>: millimetri al secondo di corsa del carrello.
+    <b>Accelerazione</b>: su quanti millimetri si distribuisce la partenza &mdash; 0 significa
+    partenza secca. Senza rampa un motore fermo pu&ograve; non riuscire ad agganciare la
+    frequenza di partenza e limitarsi a vibrare.</p>
 
   <button class="primary" onclick="runBoth()">Esegui i due assi insieme</button>
   <button class="primary danger" onclick="motorStop()">STOP</button>
@@ -475,23 +778,45 @@ function fullTurn(axis, dir){
   fetch('/api/motor/full?axis=' + axis + '&dir=' + dir);
 }
 
-function showSps(a){ $('lbl-sps-' + a).textContent = $('sps-' + a).value + ' p/s'; }
+function showFeed(a){ $('lbl-feed-' + a).textContent = $('feed-' + a).value + ' mm/s'; }
 function showRamp(a){
   var v = $('ramp-' + a).value;
-  $('lbl-ramp-' + a).textContent = (v === '0') ? 'nessuna' : v + ' passi';
+  $('lbl-ramp-' + a).textContent = (v === '0') ? 'nessuna' : v + ' mm';
 }
 
 function pushAxis(a){
-  fetch('/api/motor/config?axis=' + a + '&sps=' + $('sps-' + a).value + '&ramp=' + $('ramp-' + a).value);
+  fetch('/api/motor/config?axis=' + a + '&feed=' + $('feed-' + a).value + '&ramp=' + $('ramp-' + a).value);
+}
+
+function pushMicro(){
+  fetch('/api/motor/micro?n=' + $('micro').value);
 }
 
 function showPen(){
-  $('lbl-pen-up').textContent = $('pen-up').value + '\u00B0';
-  $('lbl-pen-down').textContent = $('pen-down').value + '\u00B0';
+  $('lbl-pen-up').textContent = $('pen-up').value + '°';
+  $('lbl-pen-down').textContent = $('pen-down').value + '°';
 }
 
 function pushPen(which){
   fetch('/api/pen/config?up=' + $('pen-up').value + '&down=' + $('pen-down').value + '&preview=' + which);
+}
+
+// Lo slider dal vivo manda al massimo una richiesta ogni 70 ms: il server web
+// dell'ESP32 serve una richiesta alla volta, e trascinando il dito ne partirebbero
+// decine al secondo che si accodano, facendo arrivare il servo in ritardo sul dito.
+var penTimer = null;
+var penPending = null;
+
+function penLive(){
+  var v = $('pen-live').value;
+  $('lbl-pen-live').textContent = v + '°';
+  penPending = v;
+  if (penTimer) return;
+  penTimer = setInterval(function(){
+    if (penPending === null){ clearInterval(penTimer); penTimer = null; return; }
+    fetch('/api/pen/angle?deg=' + penPending);
+    penPending = null;
+  }, 70);
 }
 
 function penSet(state){
@@ -500,6 +825,14 @@ function penSet(state){
 
 function penToggle(){
   fetch('/api/pen/set?state=toggle');
+}
+
+function demoStart(what){
+  fetch('/api/demo/start?what=' + what);
+}
+
+function demoStop(){
+  fetch('/api/demo/stop');
 }
 
 function pushInvert(a){
@@ -515,12 +848,12 @@ function setPin(pin, level){
 }
 
 function runAxis(axis, dir){
-  fetch('/api/motor/run?axis=' + axis + '&dir=' + dir + '&steps=' + $('steps-' + axis).value);
+  fetch('/api/motor/run?axis=' + axis + '&dir=' + dir + '&mm=' + $('mm-' + axis).value);
 }
 
 function runBoth(){
-  fetch('/api/motor/run?axis=x&dir=right&steps=' + $('steps-x').value);
-  fetch('/api/motor/run?axis=y&dir=up&steps=' + $('steps-y').value);
+  fetch('/api/motor/run?axis=x&dir=right&mm=' + $('mm-x').value);
+  fetch('/api/motor/run?axis=y&dir=up&mm=' + $('mm-y').value);
 }
 
 function motorStop(){
@@ -530,9 +863,9 @@ function motorStop(){
 function applyAxis(a, s){
   $('stat-' + a).textContent = s.done + ' passi · ' +
     (s.remaining < 0 ? 'continuo' : s.remaining + ' mancanti');
-  if (document.activeElement !== $('sps-' + a)) {
-    $('sps-' + a).value = s.sps;
-    showSps(a);
+  if (document.activeElement !== $('feed-' + a)) {
+    $('feed-' + a).value = s.feed;
+    showFeed(a);
   }
   if (document.activeElement !== $('ramp-' + a)) {
     $('ramp-' + a).value = s.ramp;
@@ -556,11 +889,25 @@ function applyState(s){
   applyAxis('x', s.x);
   applyAxis('y', s.y);
 
+  if (document.activeElement !== $('micro')) $('micro').value = s.micro;
+  var perStep = s.mmPerRev / (200 * s.micro);
+  $('micro-hint').textContent = 'Un giro di pignone = ' + s.mmPerRev.toFixed(4) +
+    ' mm · ' + s.spmm.toFixed(3) + ' passi/mm · un passo = ' + perStep.toFixed(4) + ' mm';
+  $('scale-hint').textContent = 'Un click = ' + perStep.toFixed(4) +
+    ' mm · "1 giro" = ' + s.mmPerRev.toFixed(1) + ' mm';
+
   if (document.activeElement !== $('pen-up')) $('pen-up').value = s.pen.up;
   if (document.activeElement !== $('pen-down')) $('pen-down').value = s.pen.down;
+  if (document.activeElement !== $('pen-live') && penPending === null) {
+    $('pen-live').value = s.pen.angle;
+    $('lbl-pen-live').textContent = s.pen.angle + '°';
+  }
   showPen();
-  $('btn-center').textContent = (s.pen.state === 'down') ? 'GI\u00D9' : 'PENNA';
+  $('btn-center').textContent = (s.pen.state === 'down') ? 'GIÙ' : 'PENNA';
   $('drv-enabled').checked = s.enabled;
+  $('demo-status').textContent = s.demo.running
+    ? ('In corso: ' + s.demo.name + ' — tratto ' + s.demo.step + '/' + s.demo.total)
+    : 'Nessuna prova in corso';
 
   $('wifi-info').innerHTML = 'Modalità: <b>' + s.mode + '</b><br>Rete: <b>' + s.ssid + '</b><br>IP: <b>' + s.ip + '</b>';
 }
@@ -608,10 +955,10 @@ setInterval(refreshLog, 3000);
 )rawliteral";
 
 String axisJson(const Motor& m) {
-  return "{\"remaining\":" + String(m.stepsRemaining) +
-         ",\"done\":" + String(m.stepsDone) +
-         ",\"sps\":" + String(m.stepsPerSec) +
-         ",\"ramp\":" + String(m.rampSteps) +
+  return "{\"remaining\":" + String((long)m.stepsRemaining) +
+         ",\"done\":" + String((long)m.stepsDone) +
+         ",\"feed\":" + String(m.feedMmS, 1) +
+         ",\"ramp\":" + String(m.rampMm, 1) +
          ",\"invert\":" + String(m.invert ? "true" : "false") + "}";
 }
 
@@ -620,9 +967,17 @@ void sendStateJson() {
                 ",\"ledYellow\":" + String(ledYellowState ? "true" : "false") +
                 ",\"ledGreen\":" + String(ledGreenState ? "true" : "false") +
                 ",\"enabled\":" + String(driverEnabled ? "true" : "false") +
+                ",\"micro\":" + String(microsteps) +
+                ",\"spmm\":" + String(stepsPerMm(), 4) +
+                ",\"mmPerRev\":" + String(MM_PER_REV, 4) +
                 ",\"pen\":{\"up\":" + String(penUpDeg) +
                 ",\"down\":" + String(penDownDeg) +
+                ",\"angle\":" + String(penAngle) +
                 ",\"state\":\"" + penState + "\"}" +
+                ",\"demo\":{\"running\":" + String(demoKind != DEMO_NONE ? "true" : "false") +
+                ",\"name\":\"" + String(demoName(demoKind)) + "\"" +
+                ",\"step\":" + String(demoIndex) +
+                ",\"total\":" + String(demoTotal(demoKind)) + "}" +
                 ",\"x\":" + axisJson(motorX) +
                 ",\"y\":" + axisJson(motorY) +
                 ",\"mode\":\"" + String(apMode ? "AP" : "STA") + "\"" +
@@ -680,15 +1035,28 @@ bool wantsY() {
   return a == "y" || a == "both";
 }
 
+void pulseStepOnce(Motor& m) {
+  digitalWrite(m.stepPin, HIGH);
+  delayMicroseconds(STEP_PULSE_US);
+  digitalWrite(m.stepPin, LOW);
+}
+
+// Un click = un microstep. A 1/16 sono 0,029 mm: non si vede muovere niente,
+// ed è voluto — è la risoluzione della macchina, e serve per misurare il gioco.
 void handleMotorStep() {
   int d = dirFromArg();
-  if (wantsX()) { setDir(motorX, d); pulseStep(motorX); }
-  if (wantsY()) { setDir(motorY, d); pulseStep(motorY); }
+  if (motorX.stepsRemaining != 0 || motorY.stepsRemaining != 0) {
+    server.send(409, "text/plain", "movimento in corso");
+    return;
+  }
+  if (wantsX()) { setDir(motorX, d); pulseStepOnce(motorX); }
+  if (wantsY()) { setDir(motorY, d); pulseStepOnce(motorY); }
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorStart() {
   int d = dirFromArg();
+  demoStop("interrotta da un comando manuale");
   logMsg("Motore " + server.arg("axis") + ": avvio continuo verso " + (d > 0 ? "+" : "-"));
   if (wantsX()) startMove(motorX, d, -1);
   if (wantsY()) startMove(motorY, d, -1);
@@ -696,43 +1064,77 @@ void handleMotorStart() {
 }
 
 void handleMotorStop() {
-  if (wantsX()) motorX.stepsRemaining = 0;
-  if (wantsY()) motorY.stepsRemaining = 0;
-  logMsg("Motori: stop (X " + String(motorX.stepsDone) + " passi, Y " + String(motorY.stepsDone) + " passi)");
+  demoStop("interrotta dallo STOP");
+  if (wantsX()) stopMotor(motorX);
+  if (wantsY()) stopMotor(motorY);
+  logMsg("Motori: stop (X " + String((long)motorX.stepsDone) + " passi, Y " + String((long)motorY.stepsDone) + " passi)");
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorFull() {
   int d = dirFromArg();
-  logMsg("Motore " + server.arg("axis") + ": giro completo verso " + (d > 0 ? "+" : "-"));
-  if (wantsX()) startMove(motorX, d, STEPS_PER_REV);
-  if (wantsY()) startMove(motorY, d, STEPS_PER_REV);
+  demoStop("interrotta da un comando manuale");
+  logMsg("Motore " + server.arg("axis") + ": un giro di pignone (" + String(stepsPerRev()) +
+         " passi = " + String(MM_PER_REV, 2) + " mm) verso " + (d > 0 ? "+" : "-"));
+  if (wantsX()) startMove(motorX, d, stepsPerRev());
+  if (wantsY()) startMove(motorY, d, stepsPerRev());
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorRun() {
   int d = dirFromArg();
-  long steps = server.arg("steps").toInt();
+  float mm = server.arg("mm").toFloat();
+  if (mm < 0.01f) mm = 0.01f;
+  if (mm > 400.0f) mm = 400.0f;
+  long steps = lroundf(mm * stepsPerMm());
   if (steps < 1) steps = 1;
-  if (steps > 20000) steps = 20000;
-  logMsg("Test " + server.arg("axis") + ": " + String(steps) + " passi verso " + (d > 0 ? "+" : "-"));
+
+  demoStop("interrotta da un comando manuale");
+  logMsg("Test " + server.arg("axis") + ": " + String(mm, 2) + " mm = " + String(steps) +
+         " passi verso " + (d > 0 ? "+" : "-"));
   if (wantsX()) startMove(motorX, d, steps);
   if (wantsY()) startMove(motorY, d, steps);
   server.send(200, "text/plain", "ok");
 }
 
 void handleMotorConfig() {
-  long sps = server.arg("sps").toInt();
-  long ramp = server.arg("ramp").toInt();
-  if (sps < SPS_MIN) sps = SPS_MIN;
-  if (sps > SPS_MAX) sps = SPS_MAX;
-  if (ramp < RAMP_MIN) ramp = RAMP_MIN;
-  if (ramp > RAMP_MAX) ramp = RAMP_MAX;
+  float feed = server.arg("feed").toFloat();
+  float ramp = server.arg("ramp").toFloat();
+  if (feed < FEED_MIN_MM_S) feed = FEED_MIN_MM_S;
+  if (feed > FEED_MAX_MM_S) feed = FEED_MAX_MM_S;
+  if (ramp < RAMP_MIN_MM) ramp = RAMP_MIN_MM;
+  if (ramp > RAMP_MAX_MM) ramp = RAMP_MAX_MM;
 
-  Motor& m = (server.arg("axis") == "y") ? motorY : motorX;
-  m.stepsPerSec = sps;
-  m.rampSteps = ramp;
-  logMsg("Motore " + String(m.name) + ": " + String(sps) + " passi/s, rampa " + String(ramp) + " passi");
+  bool isY = (server.arg("axis") == "y");
+  Motor& m = isY ? motorY : motorX;
+  m.feedMmS = feed;
+  m.rampMm = ramp;
+  motorPrefs.putFloat(isY ? "feedY" : "feedX", feed);
+  motorPrefs.putFloat(isY ? "rampY" : "rampX", ramp);
+  logMsg("Motore " + String(m.name) + ": " + String(feed, 1) + " mm/s (" +
+         String((long)(feed * stepsPerMm())) + " passi/s), rampa " + String(ramp, 1) + " mm");
+  server.send(200, "text/plain", "ok");
+}
+
+// Il numero di microstep non cambia nessun pin (a meno che MS_PIN sia definito):
+// descrive al firmware com'è cablato il driver, e da lì discendono passi/mm,
+// il giro completo e la conversione delle velocità.
+void handleMotorMicro() {
+  int n = server.arg("n").toInt();
+  if (n != 1 && n != 2 && n != 4 && n != 8 && n != 16 && n != 32) {
+    server.send(400, "text/plain", "microstep non valido");
+    return;
+  }
+  stopMotor(motorX);
+  stopMotor(motorY);
+  demoStop("interrotta dal cambio microstep");
+  microsteps = n;
+  motorPrefs.putInt("micro", microsteps);
+#if MS_PIN >= 0
+  digitalWrite(MS_PIN, (microsteps > 1) ? HIGH : LOW);
+#endif
+  logMsg("Microstep: 1/" + String(microsteps) + " -> " + String(stepsPerMm(), 3) +
+         " passi/mm, un giro = " + String(stepsPerRev()) + " passi");
   server.send(200, "text/plain", "ok");
 }
 
@@ -744,6 +1146,15 @@ void handlePenSet() {
     return;
   }
   setPen(st);
+  server.send(200, "text/plain", "ok");
+}
+
+// Angolo libero dallo slider: muove il servo e basta, non tocca i due valori
+// salvati di penna alzata e abbassata.
+void handlePenAngle() {
+  int deg = constrain(server.arg("deg").toInt(), 0, 180);
+  servoWriteDeg(deg);
+  penState = "man";
   server.send(200, "text/plain", "ok");
 }
 
@@ -763,11 +1174,36 @@ void handlePenConfig() {
   server.send(200, "text/plain", "ok");
 }
 
+void handleDemoStart() {
+  String what = server.arg("what");
+  int kind = (what == "circle") ? DEMO_CIRCLE : (what == "square") ? DEMO_SQUARE : DEMO_NONE;
+  if (kind == DEMO_NONE) {
+    server.send(400, "text/plain", "prova sconosciuta");
+    return;
+  }
+  if (!driverEnabled) {
+    server.send(409, "text/plain", "driver disabilitati");
+    return;
+  }
+  stopMotor(motorX);
+  stopMotor(motorY);
+  demoStart(kind);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleDemoStop() {
+  demoStop("interrotta dall'utente");
+  stopMotor(motorX);
+  stopMotor(motorY);
+  server.send(200, "text/plain", "ok");
+}
+
 void handleMotorInvert() {
-  Motor& m = (server.arg("axis") == "y") ? motorY : motorX;
+  bool isY = (server.arg("axis") == "y");
+  Motor& m = isY ? motorY : motorX;
   m.invert = (server.arg("on") == "1");
-  m.stepsRemaining = 0; // il verso non va cambiato a movimento in corso
-  motorPrefs.putBool(m.name[0] == 'Y' ? "invY" : "invX", m.invert);
+  stopMotor(m); // il verso non va cambiato a movimento in corso
+  motorPrefs.putBool(isY ? "invY" : "invX", m.invert);
   logMsg("Motore " + String(m.name) + ": direzione " + (m.invert ? "invertita" : "normale"));
   server.send(200, "text/plain", "ok");
 }
@@ -784,8 +1220,9 @@ void handleMotorEnable() {
 void handlePinSet() {
   String pin = server.arg("pin");
   bool high = (server.arg("level") == "1");
-  motorX.stepsRemaining = 0;
-  motorY.stepsRemaining = 0;
+  demoStop("interrotta dal test pin");
+  stopMotor(motorX);
+  stopMotor(motorY);
 
   if (pin == "stepx") {
     digitalWrite(STEP_X_PIN, high ? HIGH : LOW);
@@ -844,8 +1281,9 @@ void setupOTA() {
   ArduinoOTA.setHostname("cnc2d");
   ArduinoOTA.setPassword(AP_PASS);
   ArduinoOTA.onStart([]() {
-    motorX.stepsRemaining = 0; // niente passi durante un aggiornamento firmware
-    motorY.stepsRemaining = 0;
+    demoStop("interrotta dall'aggiornamento OTA");
+    stopMotor(motorX); // niente passi durante un aggiornamento firmware
+    stopMotor(motorY);
     logMsg("OTA: aggiornamento avviato...");
   });
   ArduinoOTA.onEnd([]() {
@@ -855,6 +1293,19 @@ void setupOTA() {
     logMsg("OTA errore [" + String((int)error) + "]");
   });
   ArduinoOTA.begin();
+}
+
+void setupStepTimer() {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  stepTimer = timerBegin(1000000); // base dei tempi a 1 MHz
+  timerAttachInterrupt(stepTimer, &onStepTick);
+  timerAlarm(stepTimer, 1000000 / TICK_HZ, true, 0);
+#else
+  stepTimer = timerBegin(0, 80, true); // 80 MHz / 80 = 1 MHz
+  timerAttachInterrupt(stepTimer, &onStepTick, true);
+  timerAlarmWrite(stepTimer, 1000000 / TICK_HZ, true);
+  timerAlarmEnable(stepTimer);
+#endif
 }
 
 void setup() {
@@ -882,8 +1333,19 @@ void setup() {
   motorPrefs.begin("motor_cfg", false);
   motorX.invert = motorPrefs.getBool("invX", false);
   motorY.invert = motorPrefs.getBool("invY", false);
+  motorX.feedMmS = motorPrefs.getFloat("feedX", 20.0f);
+  motorY.feedMmS = motorPrefs.getFloat("feedY", 20.0f);
+  motorX.rampMm = motorPrefs.getFloat("rampX", 3.0f);
+  motorY.rampMm = motorPrefs.getFloat("rampY", 3.0f);
+  microsteps = motorPrefs.getInt("micro", 16);
   penUpDeg = motorPrefs.getInt("penUp", 90);
   penDownDeg = motorPrefs.getInt("penDn", 60);
+  penAngle = penUpDeg;
+
+#if MS_PIN >= 0
+  pinMode(MS_PIN, OUTPUT);
+  digitalWrite(MS_PIN, (microsteps > 1) ? HIGH : LOW);
+#endif
 
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
   ledcAttach(SERVO_PIN, SERVO_FREQ, SERVO_RES_BITS);
@@ -892,6 +1354,10 @@ void setup() {
   ledcAttachPin(SERVO_PIN, SERVO_CHANNEL);
 #endif
   servoRelease();
+
+  setupStepTimer();
+  logMsg("Trasmissione: un giro = " + String(MM_PER_REV, 4) + " mm, microstep 1/" +
+         String(microsteps) + ", " + String(stepsPerMm(), 3) + " passi/mm");
 
   prefs.begin("wifi_cfg", false);
   String savedSsid = prefs.getString("ssid", "");
@@ -920,8 +1386,12 @@ void setup() {
   server.on("/api/motor/full", HTTP_GET, handleMotorFull);
   server.on("/api/motor/run", HTTP_GET, handleMotorRun);
   server.on("/api/motor/config", HTTP_GET, handleMotorConfig);
+  server.on("/api/motor/micro", HTTP_GET, handleMotorMicro);
   server.on("/api/pen/set", HTTP_GET, handlePenSet);
+  server.on("/api/pen/angle", HTTP_GET, handlePenAngle);
   server.on("/api/pen/config", HTTP_GET, handlePenConfig);
+  server.on("/api/demo/start", HTTP_GET, handleDemoStart);
+  server.on("/api/demo/stop", HTTP_GET, handleDemoStop);
   server.on("/api/motor/invert", HTTP_GET, handleMotorInvert);
   server.on("/api/motor/enable", HTTP_GET, handleMotorEnable);
   server.on("/api/pin/set", HTTP_GET, handlePinSet);
@@ -931,10 +1401,10 @@ void setup() {
 }
 
 void loop() {
-  // Il movimento ha priorità sul web: server.handleClient() può bloccare anche per
-  // centinaia di millisecondi, quindi i passi vanno emessi prima e dopo, non solo dopo.
-  serviceMotors();
+  // I passi ora li emette il timer hardware, quindi qui resta solo quello che
+  // può permettersi di aspettare: il web, l'OTA e l'avanzamento della prova
+  // d'insieme da un tratto al successivo.
   server.handleClient();
   ArduinoOTA.handle();
-  serviceMotors();
+  serviceDemo();
 }

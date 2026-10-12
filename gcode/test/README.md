@@ -34,6 +34,13 @@ tarato sulla macchina, e a quel punto i 40 mm non saranno più un giro esatto:
 questi file restano validi come prova di movimento, non come riferimento
 dimensionale.
 
+**Aggiornamento, a trasmissione decisa.** Con pignone modulo 1,5 e 20 denti un
+giro vale `pi * m * z = 94,2478 mm`, quindi a 1/16 microstep servono **33,953
+passi/mm** e i 40 mm del quadrato sono 1358 microscatti, cioè 0,42 giri. La
+verifica "un lato = un giro" non vale più: per controllare che i ponticelli
+MS1/MS2/MS3 stiano facendo effetto si usa il pulsante "1 giro" della dashboard,
+che calcola gli impulsi dai microstep impostati.
+
 ## I comandi della penna
 
 I primi due file non toccano l'asse Z, e restano utili per provare gli assi

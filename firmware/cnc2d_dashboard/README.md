@@ -62,15 +62,35 @@ sulla stessa rete su:
 ### Tab Controllo
 
 Frecce sinistra/destra: pilotano il motore X. Frecce su/giù: pilotano il motore Y.
-Un click singolo fa avanzare il motore di un singolo passo; tenendo premuto (dopo ~300ms)
+Un click singolo fa avanzare il motore di un singolo microstep; tenendo premuto (dopo ~300ms)
 il motore continua a girare finché non si rilascia il pulsante.
+
+**Attenzione al click singolo**: con i microstep a 1/16 un passo vale **0,029 mm**, quindi
+non si vede muovere niente. Non è un guasto, è la risoluzione della macchina — ed è il
+comando giusto per misurare il gioco d'ingranamento. Per vedere il movimento si usa la
+pressione prolungata, il pulsante "1 giro", o la distanza in millimetri nella tab Motore.
+La riga sotto il joystick riporta sempre quanto vale un click e quanto vale un giro,
+calcolati sui microstep impostati.
 
 Pulsante centrale del joystick: alza e abbassa la penna. L'etichetta mostra lo stato
 corrente (`PENNA` = alzata o rilasciata, `GIÙ` = appoggiata).
 
-Pulsanti `360°`: disposti attorno alle frecce, ciascuno fa compiere un giro completo
-(200 passi, cioè 1,8°/passo in full-step) all'asse e nel verso della freccia che affianca.
-Il pulsante STOP ferma entrambi gli assi.
+Pulsanti `1 giro`: disposti attorno alle frecce, ciascuno fa compiere **un giro di pignone**
+all'asse e nel verso della freccia che affianca. Il numero di impulsi lo calcola il firmware
+dai microstep impostati (200 a passo intero, 3200 a 1/16), e con pignone m1,5 z20 un giro
+vale **94,2478 mm di corsa**: non è un movimento piccolo, tienilo presente su una macchina
+senza fine corsa. Il pulsante STOP ferma entrambi gli assi e interrompe la prova d'insieme.
+
+**Penna (servo)**: slider dell'angolo dal vivo — il servo segue il dito mentre trascini,
+senza salvare niente. Serve a vedere dove finisce la penna e a trovare gli estremi utili
+prima di fissarli. Gli angoli di lavoro (alzata/abbassata) si tarano e si salvano nella
+tab Motore; questo slider non li tocca.
+
+**Prove d'insieme**: due pulsanti, `Quadrato 40 mm` e `Cerchio R20`, che eseguono le stesse
+due figure dei file in `gcode/test/` — penna compresa, stesse pause — senza interprete G-code.
+Partono dal punto in cui si trova la macchina e ci tornano alla fine. Servono solo a vedere
+i due assi e il servo muoversi insieme prima di montare: non si usano a macchina smontata
+se i motori sono vincolati a qualcosa. `INTERROMPI PROVA` le ferma.
 
 Pulsanti Rosso/Giallo/Verde: accendono/spengono rispettivamente i LED su D2, D19, D18,
 per verificare che la dashboard comunichi correttamente con l'ESP32 e per avere indicatori
@@ -84,13 +104,21 @@ toccare i cavi né il codice — usa la spunta "Inverti direzione" nella tab Mot
 Divisa in due colonne, una per asse, ciascuna con i propri parametri — X e Y avranno masse
 diverse una volta montata la meccanica, quindi vogliono regolazioni indipendenti.
 
-- **Velocità** (10–400 passi/s): 200 passi = un giro. Il limite superiore è volutamente
-  conservativo: il motore è stato validato fino a 500 passi/s, qui ci si ferma a 400.
-- **Accelerazione** (0–200 passi): su quanti passi si distribuisce la partenza. Il primo
+- **Microstep del driver** (in cima alla tab, comune ai due assi): 1, 1/2, 1/4, 1/8, 1/16,
+  1/32. È l'unica cosa del cablaggio che il firmware non può leggere da solo, perché dipende
+  dai ponticelli MS1/MS2/MS3 sul driver. Da qui discendono passi/mm, il giro completo e la
+  conversione delle velocità, quindi è il primo valore da sistemare. Verifica rapida: premi
+  "1 giro" e guarda l'albero — se fa un giro intero il valore è giusto, se ne fa un
+  sedicesimo i ponticelli sono a 1/16 e qui c'è ancora 1. Salvato in memoria non volatile.
+- **Velocità** (1–100 mm/s): millimetri al secondo di **corsa del carrello**, non passi al
+  secondo. La conversione la fa il firmware: con pignone m1,5 z20 un giro vale 94,2478 mm,
+  quindi a 1/16 servono 33,953 passi/mm. C'è comunque un tetto di 6000 impulsi/s a valle di
+  qualunque conto, che a 1/32 limita la velocità massima effettiva a ~88 mm/s.
+- **Accelerazione** (0–20 mm): su quanti millimetri si distribuisce la partenza. Il primo
   passo parte 4 volte più lento della velocità impostata e si accelera linearmente fino
   ad essa. A 0 la partenza è secca — utile per verificare fino a dove il motore aggancia
   da fermo, ma un motore fermo che non aggancia la frequenza di partenza si limita a vibrare.
-- **Passi**: quanti passi eseguire col pulsante di quella colonna.
+- **Distanza (mm)**: quanti millimetri percorrere col pulsante di quella colonna.
 - **Inverti direzione**: ribalta il verso di quell'asse. Serve quando, montata la meccanica,
   un asse si muove al contrario rispetto alla freccia premuta: si risolve con una spunta
   invece di riaprire il cablaggio. L'impostazione è salvata in memoria non volatile e
@@ -104,9 +132,11 @@ diverse una volta montata la meccanica, quindi vogliono regolazioni indipendenti
 - **Test pin** (sezione richiudibile): forza STEP/DIR/EN a un livello fisso per misurarli
   col multimetro sul pin del driver.
 
-La sezione **Penna (servo)** ha due slider per tarare l'angolo di penna alzata e penna
-abbassata: rilasciando uno slider il servo si porta subito su quell'angolo, così si regola
-guardando la penna invece che a tentativi. I due valori sono salvati in memoria non volatile.
+La sezione **Penna (servo) — taratura** ha due slider per tarare l'angolo di penna alzata e
+penna abbassata: rilasciando uno slider il servo si porta subito su quell'angolo, così si
+regola guardando la penna invece che a tentativi. I due valori sono salvati in memoria non
+volatile e sono quelli che usano il pulsante PENNA e le prove d'insieme. Lo slider libero
+della tab Controllo serve invece a esplorare, e non salva niente.
 "Rilascia" toglie il segnale PWM e il servo si ammorbidisce, smettendo di consumare e
 scaldare. **All'accensione il servo parte rilasciato** e non si muove finché non glielo si
 chiede: un servo che va in battuta contro un vincolo meccanico appena riceve corrente
@@ -115,6 +145,24 @@ assorbe moltissimo.
 Ogni comando viene registrato nella tab Log, con il conteggio dei passi effettivamente
 emessi a fine movimento: se il log dice "200 passi emessi" ma l'albero non ha fatto un giro,
 il problema è meccanico/elettrico a valle del driver, non nel firmware.
+
+### Come vengono generati i passi
+
+Dalla versione con i microstep attivi gli impulsi **non** escono più da `loop()`. A 1/16 la
+frequenza sale a qualche migliaio di impulsi al secondo, e `server.handleClient()` può
+bloccare il loop per centinaia di millisecondi: ogni blocco diventava un buco nel treno di
+impulsi, cioè passi persi — e un quadrato che non si chiude. Ora gli impulsi li emette un
+**timer hardware a 20 kHz** che il traffico web non può interrompere; `loop()` si occupa
+solo di web, OTA e dell'avanzamento della prova d'insieme da un tratto al successivo.
+
+Ogni asse usa un accumulatore a virgola fissa: a ogni scatto del timer somma il proprio
+incremento e, quando supera l'unità, esce un impulso. Così la frequenza media è esatta anche
+quando non è un sottomultiplo del tick, invece di essere arrotondata al tick più vicino.
+
+Se i tre ponticelli MS1/MS2/MS3 non sono fissi a 5 V ma portati in parallelo a un GPIO
+dell'ESP32, basta mettere quel GPIO in `MS_PIN` in cima allo sketch: il firmware lo porta
+alto per 1/16 e basso per il passo intero. Lasciato a `-1` non viene pilotato nessun pin e
+il valore scelto dalla pagina serve solo ai conti.
 
 ### Calcolo del Vref (importante)
 
