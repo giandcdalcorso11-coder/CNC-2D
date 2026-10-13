@@ -200,6 +200,55 @@ Usare il valore sbagliato significa alimentare il motore a metà (o al doppio) d
 corrente prevista — nel primo caso il motore fa singoli passi ma stalla appena si prova
 a farlo girare in modo continuo.
 
+### Il fischio a motore fermo
+
+Appena arrivano i 12 V i motori emettono un fischio sottile e costante, anche
+se nessuno ha dato un comando. È il comportamento previsto, non un guasto.
+
+L'A4988 non alimenta il motore a tensione costante: regola la **corrente** di
+fase spegnendo e riaccendendo l'avvolgimento qualche decina di migliaia di
+volte al secondo (controllo a off-time fisso). Ogni ciclo fa oscillare la
+corrente intorno al valore impostato dal trimmer, e quell'oscillazione mette in
+vibrazione le lamiere dello statore: il motore funziona da altoparlante
+pilotato alla frequenza di chopping, che cade a cavallo del limite superiore
+dell'udibile — da qui il timbro da fischio e non da ronzio.
+
+La coppia di tenuta richiede corrente anche a motore fermo, quindi il chopping
+non si interrompe mai mentre ENABLE è attivo. E `driverEnabled` parte a `true`,
+con ENABLE (attivo basso) portato a 0 V in `setup()`: per questo il fischio
+comincia all'accensione e non al primo movimento.
+
+**La prova che è questo e non altro:** togliere la spunta a "Driver abilitati"
+nella tab Motore. ENABLE va alto, i ponti si aprono, il chopping cessa e il
+fischio deve spegnersi di colpo. Se sparisce, è il chopper. Se resta, viene da
+altro — tipicamente l'alimentatore a 12 V, che è uno switching e ha un suo
+trasformatore che può cantare a basso carico.
+
+Quando invece **non** è normale:
+
+| Suono | Causa probabile |
+|---|---|
+| fischio sottile e costante, a motore fermo | chopping: normale |
+| timbro che cambia durante il movimento | normale: la frequenza di chopping varia con la corrente richiesta dal microstep |
+| ronzio ruvido che cambia spingendo il carrello a mano | il driver sta perdendo la regolazione |
+| ticchettio lento e ripetitivo | protezione in hiccup: un ramo di alimentazione va in crisi |
+| raspata sincronizzata col movimento | passi persi o risonanza meccanica |
+
+Due modi per attenuarlo, se dà fastidio:
+
+- **Abbassare la corrente** col trimmer, fino al minimo che muove il carico in
+  modo affidabile (vedi il calcolo del Vref sopra). Meno corrente vuol dire
+  meno ampiezza di oscillazione, quindi meno fischio e meno calore.
+- **Disabilitare i driver a riposo.** Oggi va fatto a mano con la spunta. Un
+  timeout automatico sarebbe l'equivalente di `idle_time` in FluidNC, ma va
+  deciso con cura: a driver disabilitati l'asse non è più tenuto in posizione e
+  si sposta a mano, quindi ha senso solo a macchina parcheggiata, mai fra due
+  tratti dello stesso disegno.
+
+Il motore tiepido a riposo è normale, per lo stesso motivo: la corrente di
+tenuta scorre sempre. Troppo caldo per tenerci un dito sopra vuol dire trimmer
+troppo alto.
+
 ## Aggiornamenti firmware via Wi-Fi (OTA)
 
 Dopo il primo caricamento via USB, i successivi aggiornamenti del firmware possono essere
