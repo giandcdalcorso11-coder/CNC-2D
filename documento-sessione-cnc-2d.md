@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 18
-**Ultimo aggiornamento:** 2026-10-13 07:28
+**Versione:** 19
+**Ultimo aggiornamento:** 2026-10-13 12:31
 
 ## Regole di co-editing
 
@@ -367,6 +367,46 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-10-06] **La precisione della punta dipende dall'altezza, non solo dall'ingombro.** Il rollio del carrello si trasferisce sulla punta con braccio ~83 mm: **1 mrad di rollio = 0,083 mm di errore**. Quindi ogni 10 mm che si alza la carta si guadagna il 12% su quell'errore. Il limite è il fondo della gabbia motore, che ha 4,9 mm di PLA sotto all'ingranaggio: portandolo da −57,5 a −55 si guadagnano 2,5 mm gratis
 
 ## Storico sessioni
+
+### [2026-10-13 12:31] (contenuti) Registro episodi ancorato al lavoro reale, archivio firmware storico, tracker costi e primi asset grafici
+
+**Riepilogo:** sul fronte contenuti/serie social sono stati creati e consolidati i tre strumenti di produzione della serie Instagram — registro episodi con script, archivio storico del firmware per rigirare i test passati, tracker costi materiali — e avviato il lavoro sulla grafica (Higgsfield per i concetti, asset overlay costruiti direttamente per le icone precise).
+
+**Cosa è stato fatto:**
+
+- **Serie Instagram (`content/instagram-series.md`):** creato il registro pubblicazione, scritti gli script completi (voice over, note di ripresa, testo overlay) per gli episodi 0-7, incluso un cold open/trailer per l'Ep. 0 (fail reali in stacchi rapidi + "in questa serie..."). Il registro è stato poi **ristrutturato**: aggiunta una colonna "Sessione reale" che collega ogni episodio alla voce corrispondente di questo stesso storico sessioni, e i 5 episodi generici originariamente immaginati per lo Step 5 sono stati sostituiti con 9 episodi ancorati alle sessioni meccaniche reali del 24-27/9 (modulo/pignone, scelta di stampare la cremagliera, calcolo cuscinetti, i quattro errori pre-stampa, bilancio di coppia, falso allarme attrito, salto di formato A5→A4, apertura asse Y). Aggiunti link diretti al codice/file di riferimento per ogni episodio
+- **Archivio storico firmware (`firmware/archivio-storico/`):** estratti dalla cronologia git 14 snapshot del firmware dashboard (01-14, dal LED singolo al servo pen-lift), con README che spiega cosa fa ciascuna versione e a quale commit corrisponde — servono per rigirare i test degli episodi passati con il codice esattamente com'era in quel momento, dato che le riprese sono partite dopo il lavoro tecnico vero e proprio
+- **Costi materiali (`content/costi-materiali.md` + `.pdf`):** creato il tracker con una colonna "prezzo effettivo" che stima quanto di ogni acquisto (spesso in confezioni multiple/kit misti) è davvero attribuibile alla macchina, al netto di scorte. Processati più round di screenshot di acquisto forniti dall'utente; generata anche una versione PDF stilizzata (reportlab). Aggiornamenti successivi: nuova base in legno che sostituisce quella stimata nello scontrino Brico, viti M4 aggiunte (non in sostituzione) alle M3
+- **Consolidamento repository:** il lavoro di questa sessione era partito su un branch separato (`claude/eager-albattani-kv9tn5`); mergiato nel branch di default (`claude/elegant-knuth-0396no`, quello usato dal fronte meccanica) così entrambe le sessioni condividono tutto in un unico posto. Branch ridondante poi cancellato dall'utente su GitHub
+- **Workflow Higgsfield/overlay:** definito il workflow di produzione video (DaVinci Resolve Free — niente scripting Python esterno dalla versione 21.1, import OTIO preferibile a FCPXML in quella versione); scelto di usare Higgsfield solo per grafiche concettuali/organiche (schemi, trasformazioni), mai per overlay precisi o per simulare la macchina reale. Costruito e consegnato all'utente un primo asset overlay reale (animazione Ctrl+C/Ctrl+V in stile blueprint, sfondo nero per blend "Screen" in Resolve), renderizzato interamente in locale con HTML/CSS + Playwright (registrazione) + ffmpeg (encoding) — nessuna generazione AI necessaria per questo tipo di grafica precisa
+
+**Decisioni prese:**
+
+- Contesto: come strutturare il registro episodi della serie Instagram
+- Decisione: ogni episodio è ancorato a una voce reale dello storico sessioni, non più a un piano narrativo scritto in anticipo
+- Alternative scartate: piano narrativo precompilato per tutti gli step (usato inizialmente per Step 5, poi abbandonato perché non rifletteva il lavoro meccanico reale nel frattempo documentato)
+
+- Contesto: dove e come usare Higgsfield nella serie
+- Decisione: solo per grafiche concettuali/organiche; per overlay precisi (icone, testo, tasti) costruzione diretta via HTML/CSS + rendering locale, non generazione AI
+- Alternative scartate: generare anche gli overlay precisi con Higgsfield — scartato per inaffidabilità nota dei modelli video AI su testo/icone piccole
+
+- Contesto: un timelapse ha un ostacolo (mano + attrezzo) fermo in inquadratura per l'intera durata della clip
+- Decisione: raccomandato il taglio diretto della clip invece della rimozione AI, perché l'ostacolo copre l'area per tutta la durata — non esiste nessun frame reale di cosa c'è sotto, quindi un tool di rimozione inventerebbe lavorazione mai filmata, in contrasto con l'autenticità della serie
+- Alternative scartate: nessuna di principio — su richiesta esplicita dell'utente, che ha scelto comunque di provare lo strumento "Remove Object from Video" di Higgsfield, sono stati forniti il prompt e le indicazioni per farlo
+- Da rivedere se: l'utente decide poi di non usare il risultato della prova Higgsfield nel montaggio finale
+
+**File consegnati/modificati:**
+
+- `content/instagram-series.md` — creato e aggiornato più volte
+- `content/costi-materiali.md` — creato e aggiornato più volte
+- `content/costi-materiali.pdf` — creato e rigenerato più volte
+- `firmware/archivio-storico/01-*.ino` … `14-*.ino` (14 file) + `firmware/archivio-storico/README.md` — creati
+- Asset overlay "Ctrl+C/Ctrl+V" (video mp4, stile blueprint) — consegnato direttamente all'utente, non committato nel repository
+- Branch `claude/eager-albattani-kv9tn5` — mergiato nel branch di default e poi cancellato
+
+**Impatto su Vision/Pipeline:** nessuno — lavoro sul fronte contenuti/serie social, parallelo alla pipeline tecnica.
+
+---
 
 ### [2026-10-13 07:28] (meccanica) Tagli in proprio, cremagliera X con rialzo integrato, e due giorni persi dietro a un servo che non aveva corrente
 
