@@ -72,34 +72,83 @@ Risultato: ............ cave
 
 ## Prova 1 — il passo vero della cremagliera stampata
 
-Si misura sulla cremagliera da sola, senza carrello. È la misura che
-decide i passi/mm, perché il rapporto è esatto per costruzione e l'unica
-incognita è di quanto il PLA si è ritirato.
+È la misura che decide i passi/mm: il rapporto di trasmissione è esatto per
+costruzione (Prova 0), quindi l'unica incognita è di quanto il PLA si è
+ritirato. Si misura sulla cremagliera, senza bisogno che il carrello si muova.
 
-Metodo differenziale, con le punte sottili del calibro infilate in due cave:
+### Servono due perni identici
 
-1. Infila una punta nella cava 1 e l'altra nella cava 11, premendo entrambe
-   contro il fianco dello stesso lato. Leggi `R10`.
-2. Senza cambiare posizione sulla cremagliera, ripeti fra la cava 1 e la
-   cava 21. Leggi `R20`.
-3. `p = (R20 - R10) / 10`.
+Due pezzi di tondino dello stesso diametro, appoggiati nelle cave: il perno si
+centra da solo contro i due fianchi, e il calibro lo tocca di tangente, su una
+superficie cilindrica ben definita. Le punte nude del calibro invece appoggiano
+ogni volta a un'altezza diversa dentro la cava, e la lettura cambia a ogni
+tentativo.
 
-La sottrazione serve a questo: le punte del calibro non appoggiano sul
-fondo esatto della cava, e quell'errore di appoggio è lo stesso nelle due
-letture, quindi si cancella. Misurare un solo tratto non lo cancella.
+Vanno benissimo **due punte da trapano uguali**: il gambo è rettificato, e
+soprattutto le due sono identiche fra loro, che è l'unica cosa che conta.
 
-Ripeti in tre punti lungo la cremagliera: tre valori di `p` che differiscono
-di più di 0,01 mm vogliono dire che la stampa non è uniforme, e l'errore si
-accumula lungo la corsa invece di restare costante.
+Diametro ideale per modulo 1,5: `1,68 * m = 2,52 mm`, quindi **2,5 mm** è la
+misura giusta. Da 2 a 3 mm va comunque bene: il perno deve appoggiare sui
+fianchi, non toccare il fondo della cava.
 
-| Punto | R10 (mm) | R20 (mm) | p calcolato |
-|---|---|---|---|
-| inizio | | | |
-| metà | | | |
-| fine | | | |
+### Il metodo
 
-Attesa: `p` un po' **minore** di 4,712389 — il PLA si ritira, e il ritiro va
-sempre verso l'ingranamento più largo. Passi/mm reali = `160 / p`.
+Si misura **sopra i due perni**, da esterno a esterno, con i becchi esterni
+del calibro. La lettura vale `(numero di passi fra le due cave) * p + d`, dove
+`d` è il diametro del perno.
+
+1. Perno fisso nella cava 1. Secondo perno nella cava 11. Leggi `R10`.
+2. Lascia il primo perno dov'è. Sposta il secondo nella cava 31. Leggi `R30`.
+3. `p = (R30 - R10) / 20`.
+
+Il diametro del perno entra identico nelle due letture e **si cancella nella
+sottrazione**: non serve nemmeno saperlo. Per lo stesso motivo non serve che i
+due perni siano esattamente 2,50 mm, né uguali fra loro al centesimo — serve
+solo che restino gli stessi due perni per tutta la serie.
+
+Venti passi invece di dieci dimezzano l'errore: `p` esce con ±0,002 mm, cioè
+±0,015 sui passi/mm. E 30 passi sono 141 mm più il perno, quindi ci stanno
+ancora in un calibro da 150.
+
+Letture attese con perni da 2,5 mm, se il ritiro fosse nullo: `R10 = 49,62`,
+`R30 = 143,87`, differenza `20 * p = 94,248`. Se la differenza viene vicino a
+89,5 o a 99 hai sbagliato il conteggio delle cave di una posizione: l'errore di
+conteggio vale un passo intero, 4,7 mm, quindi si vede subito e non si nasconde
+mai dentro il risultato.
+
+### Tre serie lungo la cremagliera
+
+| Serie | Cava di partenza | R10 (mm) | R30 (mm) | p = (R30-R10)/20 |
+|---|---|---|---|---|
+| A (inizio) | 1 | | | |
+| B (metà) | | | | |
+| C (fine) | | | | |
+
+Tre valori di `p` che differiscono di più di 0,005 mm vogliono dire che la
+stampa non è uniforme lungo la corsa: in quel caso l'errore si accumula invece
+di restare costante, e tararlo con un numero solo non lo elimina.
+
+Se la cremagliera è in più pezzi affiancati, fai una serie dentro ciascun pezzo
+e **una serie a cavallo della giunzione**: dice se il giunto si mangia o
+aggiunge una frazione di passo, che è l'errore peggiore perché è localizzato e
+una taratura globale non lo vede.
+
+Numero totale di cave della cremagliera: ............
+
+### Attesa, e il limite vero di questa misura
+
+`p` un po' **minore** di 4,712389: il PLA si ritira, e il ritiro va sempre
+verso l'ingranamento più largo, mai verso il grippaggio. Passi/mm reali =
+`160 / p`.
+
+Oltre il secondo decimale sui passi/mm non vale la pena andare, e il motivo non
+è il calibro: è il coefficiente di dilatazione del PLA, circa 70 µm per metro
+per grado. Su una campata di 20 passi, dieci gradi di differenza valgono
+0,066 mm, cioè 0,024 sui passi/mm — più dell'errore di misura. Quindi:
+
+- misura la cremagliera alla temperatura a cui lavorerà, non appena stampata;
+- su un disegno di 300 mm, dieci gradi di escursione valgono 0,2 mm di errore
+  accumulato, e nessuna taratura lo toglie.
 
 ## Prova 2 — la corsa vera del carrello
 
