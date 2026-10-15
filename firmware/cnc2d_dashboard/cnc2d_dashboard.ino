@@ -39,10 +39,17 @@
 #define YELLOW_LED_PIN 19
 #define GREEN_LED_PIN 18
 
-#define STEP_X_PIN 4
-#define DIR_X_PIN 26
-#define STEP_Y_PIN 25
-#define DIR_Y_PIN 33
+// Nomi degli assi secondo la convenzione cartesiana del foglio:
+//   X = la trave del portale (staffa LL), il carrello che porta la penna
+//   Y = le due rotaie di base (staffe TT), su cui scorre tutto il portale
+// Lo scambio rispetto al montaggio iniziale e' voluto: quelli che in fase di
+// prova chiamavamo X e Y erano invertiti rispetto al foglio. Il cablaggio in
+// breadboard NON e' cambiato, sono cambiati i nomi: il driver su GPIO 4/26
+// resta quello del portale (ora Y), quello su 25/33 quello della trave (ora X).
+#define STEP_X_PIN 25
+#define DIR_X_PIN 33
+#define STEP_Y_PIN 4
+#define DIR_Y_PIN 26
 #define ENABLE_PIN 27 // condiviso tra i due driver
 #define SERVO_PIN 32
 
@@ -675,7 +682,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
   <div class="axes" style="margin-top:12px">
     <div class="axis-card">
       <h3>Asse X</h3>
-      <p class="pins">STEP D4 &middot; DIR D26</p>
+      <p class="pins">STEP D25 &middot; DIR D33 &middot; trave del portale</p>
 
       <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-x">20 mm/s</b></div>
       <input type="range" id="feed-x" min="1" max="100" step="1" value="20"
@@ -702,7 +709,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 
     <div class="axis-card">
       <h3>Asse Y</h3>
-      <p class="pins">STEP D25 &middot; DIR D33</p>
+      <p class="pins">STEP D4 &middot; DIR D26 &middot; rotaie di base</p>
 
       <div class="slider-label"><span>Velocit&agrave;</span><b id="lbl-feed-y">20 mm/s</b></div>
       <input type="range" id="feed-y" min="1" max="100" step="1" value="20"

@@ -34,6 +34,7 @@ axes:
   # restano immobili e gli alberi molli.
   shared_stepper_disable_pin: gpio.27
 
+  # X = trave del portale (staffa LL): il carrello che porta la penna.
   x:
     # DA TARARE: 80 vale per cinghia GT2 + puleggia 20 denti + microstep 1/16.
     # Formula: (200 * microstep) / (passo_cinghia * denti_puleggia)
@@ -46,13 +47,15 @@ axes:
     motor0:
       # Pulsante di emergenza nell'angolo in basso a sinistra.
       # :low:pu = attivo basso con pull-up interno, cioè pulsante verso GND.
-      limit_neg_pin: gpio.13:low:pu
+      limit_neg_pin: gpio.14:low:pu
       hard_limits: true
       pulloff_mm: 1.000
       stepstick:
-        step_pin: gpio.4
-        direction_pin: gpio.26
+        step_pin: gpio.25
+        direction_pin: gpio.33
 
+  # Y = rotaie di base (staffe TT): ci scorre sopra tutto il portale,
+  # motorizzato su un lato solo.
   y:
     steps_per_mm: 80.000
     max_rate_mm_per_min: 2000.000
@@ -61,12 +64,12 @@ axes:
     soft_limits: false
 
     motor0:
-      limit_neg_pin: gpio.14:low:pu
+      limit_neg_pin: gpio.13:low:pu
       hard_limits: true
       pulloff_mm: 1.000
       stepstick:
-        step_pin: gpio.25
-        direction_pin: gpio.33
+        step_pin: gpio.4
+        direction_pin: gpio.26
 
   z:
     # Z non è un asse vero: è il servo del pen-lift, pilotato come asse
