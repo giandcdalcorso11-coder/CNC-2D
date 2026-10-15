@@ -28,8 +28,8 @@ from datetime import datetime
 from pathlib import Path
 
 AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".opus", ".flac", ".caf", ".mp4"}
-LOG_NAME = "_log-trascrizioni.csv"
-PROCESSED_NAME = "_elaborati.json"
+LOG_NAME = "000-log-trascrizioni.csv"
+PROCESSED_NAME = "000-elaborati.json"
 MAX_WORDS = 10
 MAX_LEN = 60
 NUM_DIGITS = 3

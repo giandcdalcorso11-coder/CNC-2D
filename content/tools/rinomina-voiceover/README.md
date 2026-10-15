@@ -21,19 +21,23 @@ gratis e funziona anche offline dopo il primo avvio.
 
 ## Uso
 
-**Il modo più comodo: doppio click.** Metti `rinomina_voiceover.py` e
-`rinomina voice over.bat` nella stessa cartella dove scarichi i voice over
-(es. `0-voice over`), poi fai doppio click su **`rinomina voice over.bat`**:
-si apre da sola una finestra, parte in ascolto su quella cartella, e da quel
-momento ogni nuovo file audio che ci metti dentro viene trascritto e
-rinominato entro pochi secondi, senza aprire tu stesso nessun terminale.
-Lasciala aperta (anche ridotta a icona) mentre lavori; chiuderla ferma
-l'ascolto.
+**Il modo più comodo: doppio click.** Metti `000-rinomina_voiceover.py` e
+`000-rinomina voice over.bat` nella stessa cartella dove scarichi i voice
+over (es. `0-voice over`), poi fai doppio click su
+**`000-rinomina voice over.bat`**: si apre da sola una finestra, parte in
+ascolto su quella cartella, e da quel momento ogni nuovo file audio che ci
+metti dentro viene trascritto e rinominato entro pochi secondi, senza
+aprire tu stesso nessun terminale. Lasciala aperta (anche ridotta a icona)
+mentre lavori; chiuderla ferma l'ascolto.
+
+Il prefisso `000-` serve solo a tenere questi file (script, log, storico)
+sempre in cima alla cartella in ordine alfabetico, separati dai voice over
+numerati `001-`, `002-`, ... — così restano facili da trovare e cliccare.
 
 **In alternativa, da riga di comando** (stessa cartella dei voice over):
 ```
-python rinomina_voiceover.py .            rem elabora una volta i file nuovi
-python rinomina_voiceover.py . --watch    rem resta in ascolto come il .bat
+python 000-rinomina_voiceover.py .            rem elabora una volta i file nuovi
+python 000-rinomina_voiceover.py . --watch    rem resta in ascolto come il .bat
 ```
 
 ## Ordine cronologico
@@ -62,11 +66,11 @@ I file audio vengono **rinominati sul posto** (es. `WhatsApp Audio
 copiati altrove. Per ognuno trovi anche:
 - un file `.txt` con la **trascrizione integrale**, comodo da incollare
   direttamente in `content/instagram-series.md` come bozza di voice over
-- `_elaborati.json`, lo **storico delle rinomine** (nome originale → nuovo
-  nome, data/ora), che serve anche allo script per non ritrascrivere due
-  volte lo stesso file
-- `_log-trascrizioni.csv`, lo stesso storico in formato apribile con Excel,
-  con in più il testo trascritto per ogni voce
+- `000-elaborati.json`, lo **storico delle rinomine** (nome originale →
+  nuovo nome, data/ora), che serve anche allo script per non ritrascrivere
+  due volte lo stesso file
+- `000-log-trascrizioni.csv`, lo stesso storico in formato apribile con
+  Excel, con in più il testo trascritto per ogni voce
 
 ## Limiti da sapere
 
