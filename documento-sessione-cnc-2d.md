@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 20
-**Ultimo aggiornamento:** 2026-10-15 17:41
+**Versione:** 21
+**Ultimo aggiornamento:** 2026-10-15 18:15
 
 ## Regole di co-editing
 
@@ -400,7 +400,7 @@ mano a mano che le misure arrivano):
 - ~~PRIORITÀ: le tre misure del primo test di movimento~~ — **rinviate per decisione dell'utente il 2026-10-15**, dopo il modulo penna, quando si potranno fare disegnando. La procedura resta in `misure/primo-asse.md`, aggiornata due volte: i 6400 impulsi non si misurano con un calibro da 150, e il passo si ricava a perni (due tondini identici nelle cave, `p = (R30 - R10)/20`, dove il diametro del perno si cancella nella sottrazione). Il gioco, provato a mano a montaggio fatto, è risultato "quasi zero" — resta da quantificarlo
 - **Corsa utile reale di ciascun asse, da fermo a fermo.** Basta il metro, ±1 mm. Oggi in `cnc2d-config.yaml` c'è `max_travel_mm: 300.000` su entrambi, con scritto "DA TARARE"
 - **Due passi/mm, uno per asse.** Le due cremagliere si sono ritirate di quantità diverse: un valore solo fa uscire i quadrati rettangoli. Da misurare per asse e da separare nel firmware della dashboard, che oggi ne ha uno globale
-- **La quota a cui è stata tagliata la staffa LL non è registrata**, né cosa è stato aggiustato in montaggio. Va scritta finché è fresca: è la quota di riferimento di tutta la geometria del portale
+- ~~La quota a cui è stata tagliata la staffa LL non è registrata~~ — **chiuso il 2026-10-15: 550 mm**, la quota di progetto, senza scarti. Dalla stecca da 1002 restano 452 mm di avanzo
 - **Il config di FluidNC non è mai stato provato** sulla macchina montata. Contiene ancora `steps_per_mm: 80.000` (residuo dell'ipotesi a cinghia: sbaglia di 2,36 volte), nessun blocco `homing:`, e i due assi sono stati rinominati il 2026-10-15 senza poterli verificare
 - **Aggiornare il carrello X nell'assieme CAD con la versione stampata.** Finché c'è quello vecchio, ogni controllo di interferenza ripesca le stesse otto collisioni finte degli MR63 — e una vera ci si nasconde dentro
 - ~~Le due rotaie nell'assieme sono sfalsate di 31,252 mm in Y, e costano 22,9 mm di corsa~~ — **risolto in montaggio il 2026-10-15.** L'utente ha allineato le rotaie sulla macchina vera, quindi i 22,9 mm sono recuperati. Resta da riportare l'allineamento **nell'assieme CAD**, altrimenti ogni quota che se ne ricava è sbagliata di 31 mm
@@ -435,6 +435,10 @@ mano a mano che le misure arrivano):
 - [2026-10-15] **L'utente sta disegnando il CAD.** Penna scelta: **Tratto Pen, Ø 10 mm**. Fissaggio con **due morsetti a 30÷40 mm di distanza verticale** — scelta giusta per la rigidezza angolare: anche con un decimo di gioco per morsetto l'inclinazione è 0,16°, che a 60 mm sotto vale 0,17 mm, meno del tratto della penna
 - [2026-10-15] **L'attacco al carrello X è sui quattro fori del motore**: reticolo quadrato da 31,0 mm, M3, con la bozza Ø22 attorno all'albero. Da verificare quale delle due facce del motore è libera, perché su quella anteriore il modulo deve scavalcare albero e pignone
 - [2026-10-15] **Promemoria di posizionamento, visto che Y è motorizzato su un lato solo:** in pianta la punta va il più vicino possibile alla mezzeria dei cuscinetti del carrello X e alla trave. L'errore di posizione è l'imbardata moltiplicata per lo sbalzo, quindi ogni millimetro di sbalzo la moltiplica invece di subirla. Si misura disegnando un quadrato grande e confrontando **le due diagonali**: è anche la misura che dirà se vale la pena motorizzare il lato sinistro, per cui lo spazio è già previsto dalla prova_3
+- [2026-10-15] **L'attacco è sulla faccia posteriore del motore:** nessun conflitto con albero, pignone e cremagliera. È però la faccia **più lontana dalla trave**, quindi il modulo nasce allo sbalzo massimo — la direzione in cui l'imbardata si moltiplica. Non c'è alternativa pratica, quindi il vincolo diventa tenere il modulo compatto e portare la punta il più possibile verso il lato trave
+- [2026-10-15] **Quota dalla faccia inferiore del carrello X al piano: 45 mm col metro, 46,7 nel CAD.** 1,7 mm di scarto, dentro l'errore di un metro a nastro: le due misure non si contraddicono. E la quota **non serve saperla con precisione**, perché l'aggiustamento è la penna che scorre nei morsetti — motivo per cui i morsetti non vanno usati come riferimento di quota, ma solo come serraggio. Il numero serve invece per l'altezza della piattaforma della carta, e conferma i 44 mm già previsti
+- [2026-10-15] **Pignone e cremagliera al posto del braccetto, per il sollevamento: il confronto.** A parità di raggio le due soluzioni hanno la stessa cinematica (corsa = r × angolo), quindi la scelta non è sul rapporto. Decide un altro numero: **il gioco di una coppia stampata, ~0,2 mm**. Su una catena rigida (~5 N/mm) vale **1 N di incertezza sulla forza di appoggio**, cinque volte la forza voluta — presa rigida e ingranaggi stampati sono incompatibili. Con una **molla morbida in serie (~0,05 N/mm)** lo stesso gioco costa **0,01 N**, e con essa diventa irrilevante anche la banda morta del servo (0,9°, che a r = 7,5 vale 0,131 mm, cioè 0,007 N). Conseguenza: la molla in serie non è un accessorio, è ciò che rende praticabile la strada scelta — e una volta che c'è, **il pignone si sceglie sullo spazio disponibile, non sul rapporto**
+- [2026-10-15] **Il vero punto debole del pignone non è il pignone: è la guida verticale.** L'attrito della slitta è in serie con la forza di appoggio, quindi 0,1 N di aderenza su 0,2 N voluti sono ±50% e isteresi (la penna preme diverso dopo un'alzata e dopo essere stata spinta su dalla carta). È l'unico punto in cui il parallelogramma del 2026-10-01 resta superiore, perché un perno su cuscinetti ha attrito molto minore di una slitta. Le due cose si possono combinare: parallelogramma o lamine flessibili per **guidare**, pignone e cremagliera per **muovere**
 
 ## Storico sessioni
 
