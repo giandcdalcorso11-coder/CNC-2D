@@ -57,9 +57,12 @@ La cartella e il file dello sketch restano `cnc2d_dashboard`: l'IDE Arduino
 esige che cartella e sketch abbiano lo stesso nome e non accetta spazi, quindi
 il nome esteso vive nel titolo della pagina e nei README, non nel filesystem.
 
-**Il repository GitHub si chiama `GDC-CNC-2D`** (dal 2026-10-15; GitHub
-sostituisce gli spazi con trattini). L'URL precedente resta funzionante per
-redirezione automatica.
+**Il repository GitHub va rinominato `GDC-CNC-2D`** (GitHub non accetta spazi
+nei nomi e li sostituisce con trattini). Da fare a mano dalle impostazioni del
+repository: la sessione Claude Code non ha il permesso di scrivere le
+impostazioni del repository, solo il contenuto. Rinominarlo non rompe nessun
+link: su questo repository GitHub Pages non è attivo, l'applicazione è servita
+dall'ESP32 sulla rete locale e GitHub redirige automaticamente il vecchio URL.
 
 ### Step 1 — Bring-up alimentazione e logica ESP32
 
