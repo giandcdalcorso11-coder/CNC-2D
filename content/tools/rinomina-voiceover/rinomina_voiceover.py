@@ -18,7 +18,7 @@ import shutil
 import time
 from pathlib import Path
 
-AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".opus", ".flac", ".caf"}
+AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".opus", ".flac", ".caf", ".mp4"}
 LOG_NAME = "_log-trascrizioni.csv"
 PROCESSED_NAME = "_elaborati.json"
 MAX_WORDS = 10
