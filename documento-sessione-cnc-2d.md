@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 21
-**Ultimo aggiornamento:** 2026-10-15 18:15
+**Versione:** 22
+**Ultimo aggiornamento:** 2026-10-15 19:20
 
 ## Regole di co-editing
 
@@ -441,6 +441,30 @@ mano a mano che le misure arrivano):
 - [2026-10-15] **Il vero punto debole del pignone non è il pignone: è la guida verticale.** L'attrito della slitta è in serie con la forza di appoggio, quindi 0,1 N di aderenza su 0,2 N voluti sono ±50% e isteresi (la penna preme diverso dopo un'alzata e dopo essere stata spinta su dalla carta). È l'unico punto in cui il parallelogramma del 2026-10-01 resta superiore, perché un perno su cuscinetti ha attrito molto minore di una slitta. Le due cose si possono combinare: parallelogramma o lamine flessibili per **guidare**, pignone e cremagliera per **muovere**
 
 ## Storico sessioni
+
+### [2026-10-15 19:20] (contenuti) Catalogo completo delle riprese raccolte e primo smistamento per episodio
+
+**Riepilogo:** l'utente ha girato la maggior parte delle riprese fino al montaggio completo della macchina (modulo penna escluso) e ha condiviso l'intera cartella — rinominando ogni file con una descrizione di cosa contiene — per avviare lo smistamento negli episodi della serie; in parallelo si è chiuso il confronto sulle tecniche per un effetto di luce giorno/notte su un timelapse.
+
+**Cosa è stato fatto:**
+- **Trascritto in chat l'elenco completo e ordinato delle riprese raccolte finora** (184 file, dalle schermate della cartella locale dell'utente: due riferimenti CAD, i file `IMG_05xx`–`IMG_57xx`/`IMG_E0643`/`LCKK3120` e due riprese finali della macchina), nello stesso ordine della cartella — propedeutico allo smistamento nelle cartelle `EP0`/`EP1`/`EP2`/`EP3`/`MORE` già create dall'utente. Segnalato un salto di numerazione (`IMG_0759` → `IMG_4587`), probabile reset del rullino del telefono, non riprese mancanti
+- **Avviato lo smistamento su richiesta puntuale** (l'utente chiede per categoria, non tutto insieme): per l'Ep.0 individuati i clip di "sbrocco" (`IMG_0650`, `IMG_0651`), i video dei componenti (`IMG_5225`–`IMG_5227`), le aperture di Spotify/Claude (`IMG_5231`, `IMG_5228`) e il B-roll generico alla scrivania/pc/tastiera (una dozzina di file tra `IMG_05xx` e `IMG_53xx`–`IMG_53xx`)
+- **Discusso l'effetto "timelapse di più giorni" (ciclo luce giorno/notte) su un filmato reale di lavoro al pc:**
+  - Valutata la strada Higgsfield (video-to-video generativo): sconsigliata — i modelli generano a clip corte (4-15s), quindi un timelapse lungo andrebbe spezzato e ricucito con rischio di scatti/flicker alle giunzioni, e soprattutto *rigenerano i pixel* frame per frame (rischio concreto di deformare viso/mani/oggetti), in contrasto col principio di autenticità già fissato per la serie
+  - Raccomandata la via deterministica: color grading in DaVinci Resolve con keyframe ciclici su temperatura colore/luminosità (caldo-giorno ↔ freddo-notte), che mantiene il girato reale intatto e dà controllo totale sul numero di cicli
+  - L'utente ha proposto un'alternativa migliore: **piazzare il telefono e registrare davvero per 2-3 giorni** con un'app a intervalli. Opinione data: è la soluzione preferibile, a patto che nell'inquadratura ci sia una finestra o luce naturale che renda visibile il ciclo giorno/notte — altrimenti il trucco non si vedrebbe
+
+**Decisioni prese:**
+- Contesto: come ottenere l'effetto "il tempo passa" su un timelapse di lavoro al pc senza violare il principio "il girato reale resta reale, non va rigenerato via AI"
+- Decisione: provare prima la ripresa reale su più giorni (telefono fisso, intervalli, finestra in campo); il color grading in Resolve resta il piano B se la luce naturale non basta
+- Alternative scartate: relight via AI generativa (Higgsfield/Kling) — rischio artefatti e incoerente col principio di autenticità della serie
+- Da rivedere se: la stanza non ha abbastanza luce naturale per rendere leggibile il ciclo giorno/notte, allora si passa al color grading in Resolve
+
+**File consegnati/modificati:** nessun file nel repository — elenco riprese e smistamento consegnati solo in chat, su richiesta esplicita dell'utente di non salvarli ancora in un file persistente (lo smistamento è in corso, a richiesta per singole categorie)
+
+**Impatto su Vision/Pipeline:** nessuno
+
+---
 
 ### [2026-10-15 17:41] (meccanica) Macchina montata, assi rinominati sul foglio, e la penna torna in presa rigida
 
