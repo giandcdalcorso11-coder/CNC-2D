@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 19
-**Ultimo aggiornamento:** 2026-10-13 12:31
+**Versione:** 20
+**Ultimo aggiornamento:** 2026-10-15 17:41
 
 ## Regole di co-editing
 
@@ -23,6 +23,29 @@ Macchina CNC 2D per disegno/plotter, con:
 - In prospettiva, un software "stile slicer" per convertire SVG/immagini in G-code e caricarlo sulla macchina
 
 ## Pipeline
+
+### Convenzioni valide per tutta la pipeline
+
+**Nomi degli assi (dal 2026-10-15).** Secondo la convenzione cartesiana del
+foglio, decisa dall'utente:
+
+| Asse | Che cosa è | Staffa | Motore |
+|---|---|---|---|
+| **X** | la trave del portale: ci corre sopra il carrello che porta la penna | staffa LL, 550 | STEP D25 · DIR D33 |
+| **Y** | le due rotaie di base: ci scorre sopra tutto il portale | staffe TT, 2 × 400 | STEP D4 · DIR D26 |
+
+**Attenzione leggendo il resto del documento:** tutte le voci dello storico e
+tutte le note anteriori al 2026-10-15 usano la nomenclatura precedente, in cui
+X e Y erano **scambiati** rispetto a questa tabella. Non sono state riscritte —
+le voci passate non si toccano. Quando una nota vecchia dice "corsa X 242,475"
+intende la corsa del portale sulle rotaie di base, che oggi si chiama Y.
+
+**Nomi delle staffe (dal 2026-10-12).** **Staffa TT** = le due rotaie da 400.
+**Staffa LL** = la trave del portale da 550.
+
+**Nome dell'applicazione (dal 2026-10-15): GDC CNC 2D SLICER.** È la webapp
+dello Step 4, quella che importa il disegno, genera il G-code e comanda la
+macchina.
 
 ### Step 1 — Bring-up alimentazione e logica ESP32
 
@@ -164,7 +187,7 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-10-06] **`steps_per_mm` nella configurazione è sbagliato di 2,36×, ed è il primo numero da correggere.** `cnc2d-config.yaml` porta ancora `steps_per_mm: 80` con il commento "vale per cinghia GT2 + puleggia 20 denti". La macchina non ha più cinghie: con pignone e cremagliera m1.5 z=20 il giro vale `π · m · z = 94,2478` mm (= 20 denti × passo 4,7124), e con 200 passi × 16 microstep fa **33,953 passi/mm**. Finché quel numero è sbagliato ogni limite inserito è sbagliato dello stesso fattore — si scrive "300 mm di corsa" e la macchina ne percorre 707 — e nessun pannello può intercettarlo, perché il pannello parla in mm e il mm è falso. Il criterio di completamento dello step resta soddisfatto (quadrato e cerchio verificati a vista sui motori), ma le quote erano 2,36× quelle comandate
 - [2026-10-06] Conseguenze collaterali del rapporto vero: risoluzione **0,0295 mm per microstep** (il gioco di 0,235 è 8× il passo, quindi è il gioco a dominare, non la risoluzione) e `max_rate_mm_per_min: 2000` corrisponde ora a 1132 microstep/s invece di 2667, cioè **un settimo** di quello che la meccanica regge (il motore è validato a 500 passi interi/s ≈ 235 mm/s). Verifica del rapporto: `G91 G0 X100`, misurare col calibro, correggere in proporzione
 
-### Step 4 — Interfaccia web e generazione G-code
+### Step 4 — GDC CNC 2D SLICER (interfaccia web e generazione G-code)
 
 **Stato:** in corso
 
@@ -181,6 +204,21 @@ Macchina CNC 2D per disegno/plotter, con:
 - **Il calcolo resta nel browser anche quando la pagina è servita dall'ESP32.** Il microcontrollore consegna il file, il processore del PC o del telefono fa il lavoro. L'ottimizzazione del percorso del logo di prova ha impiegato 1 ms
 - **Il criterio dell'ottimizzazione è il tempo, non la distanza.** Un'alzata di penna costa circa mezzo secondo fra movimento del servo e assestamento; cinquanta millimetri di spostamento a 2000 mm/min ne costano uno e mezzo. Saldare i tratti contigui vale quindi più che accorciare gli spostamenti, e viene prima nella catena
 - **Modalità finta sempre disponibile**: l'interfaccia simula le risposte della macchina, così ci si lavora senza accendere nulla — che è la maggior parte del tempo
+- **Il nome è GDC CNC 2D SLICER** (deciso dall'utente il 2026-10-15). Regge il confronto con quello che l'applicazione fa davvero: non è solo una pulsantiera, converte un disegno in percorsi utensile — che è esattamente il lavoro di uno slicer, con la differenza che il risultato è piano invece che a strati
+- **La tab Impostazioni è l'unica fonte di verità dei numeri della macchina** (deciso il 2026-10-15). Oggi gli stessi valori vivono in tre posti che non si parlano: i `#define` del firmware della dashboard, il `cnc2d-config.yaml` di FluidNC e i default dell'anteprima nel browser. Finché è così, tarare la macchina vuol dire ricordarsi di cambiare lo stesso numero tre volte, e il giorno che se ne dimentica uno l'anteprima mostra un disegno che la macchina non fa. La tab deve **contenere i valori, salvarli e poterli esportare**, e anteprima, generatore di G-code e macchina devono leggerli tutti da lì
+- **Due passi/mm, uno per asse, non uno globale** (2026-10-15). Le due cremagliere sono stampate separatamente e si sono ritirate di quantità diverse: un valore solo fa uscire i quadrati rettangoli. Oggi il firmware della dashboard ne ha uno solo, calcolato da `MM_PER_REV`; FluidNC li ha già separati per asse
+
+**Che cosa deve contenere la tab Impostazioni** (lista di lavoro, da completare
+mano a mano che le misure arrivano):
+
+| Gruppo | Valori |
+|---|---|
+| Trasmissione | passi/mm **per asse**, microstep impostati sui ponticelli, inversione di direzione per asse |
+| Corse | corsa utile per asse (`max_travel_mm`), origine dell'area di disegno, posizione e formato del foglio nel piano |
+| Dinamica | velocità massima e accelerazione per asse, velocità di disegno distinta da quella di spostamento a vuoto |
+| Penna | angolo penna alzata, angolo penna appoggiata, passo della rampa del servo, pausa dopo ogni su/giù (150÷250 ms) |
+| Utensile | offset della punta rispetto al riferimento del carrello (X e Y), altezza del piano carta |
+| Compensazioni | gioco d'ingranamento per asse, se si deciderà di compensarlo |
 
 **Criterio di completamento:** caricare un SVG, vederlo posizionato nel foglio, generare il G-code e farlo eseguire alla macchina
 
@@ -190,10 +228,12 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-09-24] Importazione SVG funzionante: l'appiattimento delle curve lo fa il browser campionando `getPointAtLength` per lunghezza d'arco, e lo stesso campionamento riconosce i sotto-tracciati (due campioni non possono distare più del passo, quindi un salto più lungo è uno stacco di penna dentro lo stesso elemento — il foro di una "o")
 - [2026-09-24] Ottimizzazione e G-code funzionanti. Sul logo dell'utente: 11 tratti, 294 punti, spostamenti da 769 a 424 mm, circa 1 min 15 s stimati, calcolo in 1 ms. La stima del tempo usa un profilo trapezoidale per polilinea, perché il look-ahead di FluidNC mantiene la velocità fra segmenti consecutivi
 - [2026-09-24] Resta da fare: invio del programma alla macchina, avanzamento in tempo reale, caricamento della pagina sull'ESP32, conversione da fotografia a tracciato
+- [2026-10-15] **Battezzata GDC CNC 2D SLICER** su proposta dell'utente, e stabilito che la tab Impostazioni va riprogettata bene prima di riprendere il resto: è lì che finiranno tutte le misure di taratura, e progettarla male significa doverla rifare dopo averci messo dentro i numeri
+- [2026-10-15] Registrato che **il firmware della dashboard espone un solo passi/mm** per entrambi gli assi (`stepsPerMm()`, calcolato da `MM_PER_REV`): va separato per asse prima della taratura
 
 ### Step 5 — Struttura meccanica
 
-**Stato:** in corso (assemblaggio) — tre carrelli stampati e scorrevoli, portale assemblato in CAD, travi da tagliare
+**Stato:** completato nella struttura (2026-10-15) — staffa LL tagliata, portale montato sulla base, i due assi si muovono da dashboard senza difficoltà. Resta aperto solo il modulo penna (Step 6), senza il quale la macchina non disegna e non si può tarare
 
 **Obiettivo:** struttura a portale che porta la penna su un'area di **circa 242 × 256 mm**, con entrambi gli assi motorizzati e il pen-lift solidale al carrello Y. *(Formato ridimensionato il 2026-10-06: l'obiettivo originale era "tutta l'area di un foglio A4 in orizzontale", ma con cremagliere in un pezzo solo il lato da 297 non entra su nessuno dei due assi — il massimo raggiungibile è 281,6 × 292,8. L'area è equivalente a un A4, la forma è quadrata. Un A4 vero richiede una cremagliera giuntata.)*
 
@@ -313,8 +353,11 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-10-11] **Il conto della stampa:** 364,82 cm³ di modello (452 g se fosse pieno, ~150 g con 3 perimetri e infill al 15%, 12÷18 ore). In pianta 283 × 38,7, quindi a 45° fa `a+b = 321,7` contro i 362 ammessi dal piatto: ci sta in un pezzo solo, e c'è il precedente della cremagliera Y che era più lunga. Piede sul piatto e denti in su, nessun supporto
 - [2026-10-11] **Due numeri miei da correggere.** (a) L'ingombro del carrello X **lungo la rotaia è 82,000**, non 51: i 51 sono la sola gabbia motore, ma i quattro 608 stanno a passo 60,000 e con Ø22 arrivano a 82. Il taglio a 400 resta giusto, ma la corsa meccanica disponibile è **308** e non 339, e il minimo teorico era 334,5 non 303,5. (b) L'interasse è 473,400 e lo danno i fori, non 474,0 dalla lunghezza della trave
 - [2026-10-12] **Il ritiro del PLA ora agisce su 68,375 invece che su 13,375.** Allo 0,3% fa ~0,21 mm contro 0,04, ed è la quota dove il ritiro non si auto-compensa perché è riferita all'alluminio. Ma è **sistematico e in una direzione sola: più basso, cioè gioco più largo**, mai verso il grippaggio — la stessa direzione in cui sbaglia uno spessore sottodimensionato. Aspettarsi di dover spessorare di ~0,2 sotto il piede, e considerarlo normale. In cambio sparisce il termine dominante della vecchia catena: la **planarità del riporto su 284 mm, ±0,50**, che da sola valeva il doppio del budget di ±0,275 — la faccia di riferimento non è più una superficie segata ma il piatto della stampante
+- [2026-10-15] **Macchina montata.** Tagliata la staffa LL — l'unico taglio del progetto senza seconda possibilità — e assemblato il portale sulla base. I due assi si muovono dalla dashboard vecchia, le quattro frecce vanno nel verso giusto, la struttura è rigida e i motori non faticano. Il disallineamento delle rotaie è stato **risolto in montaggio**, quindi i 22,9 mm di corsa che costava sono recuperati sulla macchina vera (nell'assieme CAD va ancora riportato)
+- [2026-10-15] **Gli assi cambiano nome** per allinearsi alla convenzione del foglio: la trave del portale diventa X, le rotaie di base diventano Y. Vedi le Convenzioni in testa alla Pipeline — e attenzione che tutte le note qui sopra usano i nomi vecchi
+- [2026-10-15] **Le misure di taratura sono rinviate al modulo penna, per decisione dell'utente.** Non è un rinvio a vuoto: col modulo penna la taratura si fa disegnando una linea lunga e misurandola, che è una misura di tutta la catena in una volta e per asse, invece di una misura del solo passo della cremagliera. Il metodo col calibro resta scritto e valido in `misure/primo-asse.md` per il giorno in cui servisse separare i contributi
 
-**Problemi aperti su questo step (al 2026-10-13):**
+**Problemi aperti su questo step (al 2026-10-15):**
 - ~~Profondità del vano motore da verificare~~ — **risolto il 2026-09-26.** Il motore è un **pancake da 23,1 mm**, non un NEMA 17 standard da 34÷48: il vano da 23,5 mm è quindi corretto e le viti posteriori arrivano eccome al coperchio. Resta però **0,4 mm di gioco assiale**, che è più dei ±0,17 mm di tolleranza di centraggio della doppia elica: il motore va messo **in battuta sulla parete anteriore** (che è il riferimento della quota del pignone) con **due rondelle piane M3 da 0,5 mm** fra coperchio posteriore e parete posteriore, così le viti di dietro lo spingono in avanti invece di tirarlo indietro. Resta da verificare la profondità dei fori filettati posteriori (spesso 4÷5 mm) per scegliere la lunghezza delle viti
 - ~~Test della calamita sui profili~~ — **risolto il 2026-09-27: alluminio**, 452 g/m. Toglie di mezzo il rischio peggiore sul peso del portale
 - ~~Attrito del carrello completo da caratterizzare~~ — **risolto il 2026-09-27.** 10° di distacco, 15° di moto costante, e la causa è attrito interno dei cuscinetti (costante), non strisciamento (proporzionale). Il carrello è accettabile così com'è
@@ -337,23 +380,30 @@ Macchina CNC 2D per disegno/plotter, con:
 - **Secondo canale servo da riservare nel fascio cavi adesso.** Tirare un filo in più oggi è gratis, farlo passare dopo in una catena portacavi montata no. Lo chiederà il modulo taglierino
 - **Parallelismo cremagliera-binario entro 0,17 mm su tutta la corsa** (conseguenza della doppia elica). Va allineata **al binario**, non al bordo della base: far scorrere il carrello e controllare la distanza pignone-apice in quattro o cinque punti prima di fissare. Sintomo di errore: scorre bene in mezzo e si irrigidisce verso le estremità
 - **Piano B se il riporto della cremagliera X esce storto:** buttarlo e appendere la cremagliera a staffe stampate fissate al binario. Vantaggio concettuale: la cremagliera verrebbe riferita allo stesso pezzo su cui corre il pignone, invece che al tavolo
-- **PRIORITÀ: le tre misure del primo test di movimento.** (1) 6400 impulsi partendo sempre nello stesso verso, e quanti millimetri ha fatto davvero il carrello col calibro — teorici 188,496, e da lì il passi/mm vero da mettere in FluidNC; (2) lo sforzo è uniforme da un capo all'altro della corsa? se si irrigidisce alle estremità la cremagliera non è parallela al binario; (3) il gioco d'ingranamento: avanti 3200, segna, indietro 3200, riparti avanti, e misura la corsa persa — previsto ~0,23
+- ~~PRIORITÀ: le tre misure del primo test di movimento~~ — **rinviate per decisione dell'utente il 2026-10-15**, dopo il modulo penna, quando si potranno fare disegnando. La procedura resta in `misure/primo-asse.md`, aggiornata due volte: i 6400 impulsi non si misurano con un calibro da 150, e il passo si ricava a perni (due tondini identici nelle cave, `p = (R30 - R10)/20`, dove il diametro del perno si cancella nella sottrazione). Il gioco, provato a mano a montaggio fatto, è risultato "quasi zero" — resta da quantificarlo
+- **Corsa utile reale di ciascun asse, da fermo a fermo.** Basta il metro, ±1 mm. Oggi in `cnc2d-config.yaml` c'è `max_travel_mm: 300.000` su entrambi, con scritto "DA TARARE"
+- **Due passi/mm, uno per asse.** Le due cremagliere si sono ritirate di quantità diverse: un valore solo fa uscire i quadrati rettangoli. Da misurare per asse e da separare nel firmware della dashboard, che oggi ne ha uno globale
+- **La quota a cui è stata tagliata la staffa LL non è registrata**, né cosa è stato aggiustato in montaggio. Va scritta finché è fresca: è la quota di riferimento di tutta la geometria del portale
+- **Il config di FluidNC non è mai stato provato** sulla macchina montata. Contiene ancora `steps_per_mm: 80.000` (residuo dell'ipotesi a cinghia: sbaglia di 2,36 volte), nessun blocco `homing:`, e i due assi sono stati rinominati il 2026-10-15 senza poterli verificare
 - **Aggiornare il carrello X nell'assieme CAD con la versione stampata.** Finché c'è quello vecchio, ogni controllo di interferenza ripesca le stesse otto collisioni finte degli MR63 — e una vera ci si nasconde dentro
-- **Le due rotaie nell'assieme sono ancora sfalsate di 31,252 mm in Y** (erano 62,08, dimezzate ma non azzerate). La sovrapposizione comune scende a 368,748 e la finestra della cremagliera X cade fuori da un lato: **la corsa X passa da 242,475 a 219,6**, cioè 22,9 mm di foglio persi. Va allineata la **sinistra sulla destra**, non il contrario
+- ~~Le due rotaie nell'assieme sono sfalsate di 31,252 mm in Y, e costano 22,9 mm di corsa~~ — **risolto in montaggio il 2026-10-15.** L'utente ha allineato le rotaie sulla macchina vera, quindi i 22,9 mm sono recuperati. Resta da riportare l'allineamento **nell'assieme CAD**, altrimenti ogni quota che se ne ricava è sbagliata di 31 mm
 - **Il margine del carrello Y a fine corsa è 11,5 mm a destra e 9,8 a sinistra** con la cremagliera X v5, contro i 3,5 e 1,7 di prima. È accettabile, ma è il numero da ricontrollare quando il modulo penna aggiungerà materiale sul lato basso del carrello: la fascia critica è **Z 46,7÷59**
 - **I 12 V di potenza passano ancora per i rail della breadboard**, dati per ~1 A contro i 2 A di picco dei due motori. Va portato su morsetti a vite quando l'elettronica si fissa alla base
 
 ### Step 6 — Modulo penna e interfaccia utensili
 
-**Stato:** da fare (architettura decisa, da disegnare) — rinviato dopo l'assemblaggio del portale
+**Stato:** in corso (CAD in mano all'utente, 2026-10-15) — e ora è il collo di bottiglia di tutto: senza penna la macchina non disegna, e senza disegnare non si tara
 
 **Obiettivo:** la penna si appoggia e si solleva in modo ripetibile, con pressione costante, e il modulo è intercambiabile con altri utensili senza ritarare la macchina
 
 **Decisioni progettuali:**
-- **Il servo fa solo il sollevamento. La discesa non è comandata da niente.** La penna scende per peso proprio e galleggia sulla carta; nella posizione "giù" il servo è **meccanicamente staccato**. Tre motivi, in ordine: (a) la carta non è piana, e con posizionamento rigido 0,5 mm di variazione diventano carta rigata da una parte e linea mancante dall'altra; (b) **niente taratura di Z, niente azzeramento penna** — la penna trova la carta da sola, e non serve rifare la taratura cambiando foglio; (c) il jitter del servo in posizione non arriva alla punta. Alternativa scartata: servo in presa rigida nei due versi
+- **La quota di appoggio la dà il servo, in presa rigida nei due versi.** *Supera la decisione del 2026-10-01* ("il servo fa solo il sollevamento, la penna scende per peso proprio e galleggia"), su scelta dell'utente del 2026-10-15: il timore è che la catena non sia abbastanza sciolta perché il peso della penna la porti giù, e la preferenza è dare l'altezza e provare. **Conseguenza meccanica:** il gioco morto di 1,5 mm fra naso del braccetto e linguetta della biella va a zero, e il servo resta in coppia mentre si disegna. **Conseguenza sul software:** l'angolo di appoggio diventa un **valore tarato**, che vive nella tab Impostazioni del GDC CNC 2D SLICER e va regolabile a passo fine con la penna appoggiata sul foglio
+- **Il numero da tenere d'occhio con la presa rigida è la risoluzione del servo.** Un SG90/MG90S ha una banda morta di circa 10 µs, che su 2000 µs per 180° fa **circa 1° di granularità**. Con il braccetto da 30 mm dell'architettura del 2026-10-01, 1° vale **0,52 mm** alla punta e l'intera corsa di 4 mm sta in 7,6° di servo: otto posizioni distinte in tutto, troppo poche per regolare l'appoggio di una punta in fibra. Per usare 90° di servo sui 4 mm di corsa il braccetto deve scendere a **~2,5 mm**, e lì a dominare diventa il gioco dei giunti. È il vincolo di progetto vero di questa strada, e va risolto nel CAD prima della stampa, non dopo
+- **Mitigazione a costo quasi nullo, se la presa rigida si rivela troppo secca: una molla in serie** fra braccetto del servo e carrello della penna. Il servo continua a dare la quota — che è quello che l'utente vuole — ma l'errore di quota si trasforma in un piccolo errore di forza invece che in punta schiacciata o linea mancante. Con una molla morbida (~0,05 N/mm), mezzo millimetro di errore vale 0,025 N su un appoggio di 0,1÷0,3 N
+- **Alternativa accantonata (non scartata): discesa per gravità con servo meccanicamente staccato in appoggio.** Restano validi i tre motivi del 2026-10-01 (carta non piana, nessuna taratura di Z, nessun jitter del servo sulla punta). **Da rivedere se:** la linea esce di spessore diverso secondo il punto del foglio, o se tarare l'angolo di appoggio richiede di rifarlo a ogni cambio di foglio. Nota tecnica per quel giorno: la discesa per gravità **non chiede che il servo sia reversibile** — il servo allontana attivamente il braccetto e il carrello scende da solo — quindi quello che decide è l'attrito della guida e dei giunti, non la scioltezza del servo
 - **Parallelogramma articolato, non leva basculante.** Il parallelogramma mantiene la morsa **sempre verticale** (penna di qualunque lunghezza, nessuna spazzata della coda) e con le bielle orizzontali nella posizione di disegno è **insensibile al primo ordine al trascinamento della punta**. Il conto che ha escluso la leva: con pivot 46 mm sopra la punta e braccio 30, l'attrito di trascinamento (0,15÷0,3 N) cambia la forza sulla punta del ±45% **e cambia segno col verso di tracciamento** — linee più marcate in una direzione. Alternative scartate: leva basculante su due MR63 (un solo giunto, gioco quasi nullo, ma la geometria obbliga a una penna da ≤46 mm: resta la scelta giusta se si passa a refill D1 da 67 mm con corsa 2,5); tubi telescopici in ottone Ø6 in Ø8 (la soluzione più elegante e la migliore sul trascinamento, ma l'anima da 5,1 mm accetta un refill, non una penna); slitta su aste con bronzine stampate (il gioco della bronzina va diretto sulla punta e genera isteresi)
 - **La geometria è forzata dall'ingombro: l'unica colonna libera a tutte le quote è Y > 36,050.** Mappato lo spazio sul piano YZ al centro del carrello: la faccia +Y è uno smusso a ~30° che va da Y 36,05 a Z −15 fino a Y 20,05 a Z −44. Più dentro il tetto lo mette prima lo smusso, poi la parete, poi il bordo d'ala a Y 25,050. Quindi **asse penna a X −42,500 (centro carrello, dentro l'interasse dei 60 mm) e Y ≈ 44**, appena fuori dalla piastra: la penna sta in aria libera a ogni quota, **la si infila dall'alto** e si vede. Dentro (Y ≈ 23) ci sono solo 82 mm, cioè refill D1 e nient'altro
-- **Corsa 4 mm, pressione dalla zavorra, servo MG90S.** Coppia richiesta ~9 N·mm contro i 180÷220 disponibili: 20× di margine, quindi il servo si scegle per gli ingranaggi metallici, non per la coppia. Gioco morto di **1,5 mm** fra naso del braccetto e linguetta della biella: è quello che disaccoppia il servo mentre si disegna. Alimentazione 5 V dedicata (spunto ~700 mA) e **150÷250 ms di pausa in firmware** a ogni su/giù, altrimenti a 50 mm/s si sbavano 4 mm di tratto
+- **Corsa 4 mm, servo MG90S.** *(La pressione dalla zavorra e il gioco morto da 1,5 mm valgono per l'architettura a gravità del 2026-10-01, accantonata il 2026-10-15: con la presa rigida la pressione la dà la quota imposta dal servo e il gioco morto non c'è.)* Coppia richiesta ~9 N·mm contro i 180÷220 disponibili: 20× di margine, quindi il servo si scegle per gli ingranaggi metallici, non per la coppia. Gioco morto di **1,5 mm** fra naso del braccetto e linguetta della biella: è quello che disaccoppia il servo mentre si disegna. Alimentazione 5 V dedicata (spunto ~700 mA) e **150÷250 ms di pausa in firmware** a ogni su/giù, altrimenti a 50 mm/s si sbavano 4 mm di tratto
 - **Il modulo è un'interfaccia per una famiglia di utensili, non un pezzo singolo.** Conseguenza della scelta dell'utente di fare più moduli (pennarelli diversi, in prospettiva un taglierino). Requisito che cambia: l'interfaccia deve essere un **riferimento**, non solo un fissaggio — **due spine Ø3 asimmetriche** che definiscono la posizione, con le viti che fanno solo forza, altrimenti l'offset utensile va rimisurato a ogni cambio. Più **connettore invece di fili saldati** e un secondo canale servo riservato nel fascio
 - **La sede dell'utensile permette la rotazione (ritegno assiale sì, blocco in rotazione opzionale).** Così la **lama trascinata** si ha gratis: è offset rispetto al suo asse e si orienta da sola seguendo il percorso, zero assi aggiuntivi. Alternativa scartata per ora: lama tangenziale orientata attivamente, che vuole un asse A vero coordinato con X e Y (un servo non basta — ha 180° e il percorso accumula angolo) e la punta **esattamente** sull'asse di rotazione
 - **Offset utensile nel modello dati del firmware adesso, a zero.** La punta non sarà dove è il riferimento del carrello: col modulo previsto sta a ~44 mm in Y. Senza il campo, il giorno in cui si monta la penna tutti i limiti e tutti i disegni si spostano di 44 mm
@@ -365,8 +415,60 @@ Macchina CNC 2D per disegno/plotter, con:
 - [2026-10-06] **Il piano carta è fissato: Z ≈ 44,2 sopra il piano di base**, perché il punto più basso del carrello Y nell'assieme sta a Z 46,68. Serve una piattaforma alta 44 mm. E l'area di disegno è centrata su X −102,6 / Y −87,9, non sul centro della macchina
 - [2026-10-12] **Il requisito "alimentazione 5 V dedicata" scritto il 2026-10-01 è stato pagato in anticipo, e male.** Il servo collegato al 5 V condiviso ha mandato in brownout l'ESP32 e tenuto fermo il progetto due giorni. Ora il servo ha il suo regolatore (vedi Step 1): quando il modulo penna arriverà, l'alimentazione è già quella giusta, e il secondo canale per il taglierino si attacca allo stesso ramo
 - [2026-10-06] **La precisione della punta dipende dall'altezza, non solo dall'ingombro.** Il rollio del carrello si trasferisce sulla punta con braccio ~83 mm: **1 mrad di rollio = 0,083 mm di errore**. Quindi ogni 10 mm che si alza la carta si guadagna il 12% su quell'errore. Il limite è il fondo della gabbia motore, che ha 4,9 mm di PLA sotto all'ingranaggio: portandolo da −57,5 a −55 si guadagnano 2,5 mm gratis
+- [2026-10-15] **L'utente sta disegnando il CAD.** Penna scelta: **Tratto Pen, Ø 10 mm**. Fissaggio con **due morsetti a 30÷40 mm di distanza verticale** — scelta giusta per la rigidezza angolare: anche con un decimo di gioco per morsetto l'inclinazione è 0,16°, che a 60 mm sotto vale 0,17 mm, meno del tratto della penna
+- [2026-10-15] **L'attacco al carrello X è sui quattro fori del motore**: reticolo quadrato da 31,0 mm, M3, con la bozza Ø22 attorno all'albero. Da verificare quale delle due facce del motore è libera, perché su quella anteriore il modulo deve scavalcare albero e pignone
+- [2026-10-15] **Promemoria di posizionamento, visto che Y è motorizzato su un lato solo:** in pianta la punta va il più vicino possibile alla mezzeria dei cuscinetti del carrello X e alla trave. L'errore di posizione è l'imbardata moltiplicata per lo sbalzo, quindi ogni millimetro di sbalzo la moltiplica invece di subirla. Si misura disegnando un quadrato grande e confrontando **le due diagonali**: è anche la misura che dirà se vale la pena motorizzare il lato sinistro, per cui lo spazio è già previsto dalla prova_3
 
 ## Storico sessioni
+
+### [2026-10-15 17:41] (meccanica) Macchina montata, assi rinominati sul foglio, e la penna torna in presa rigida
+
+**Riepilogo:** la struttura è finita — staffa LL tagliata, portale montato, i due assi si muovono senza difficoltà — e con la macchina davanti sono cambiate tre cose di impostazione: i nomi degli assi passano alla convenzione cartesiana del foglio, la penna torna a prendere la quota dal servo invece che per gravità, e la webapp prende un nome, GDC CNC 2D SLICER, con la tab Impostazioni promossa a unica fonte di verità dei numeri di taratura.
+
+**Cosa è stato fatto:**
+- **Tagliata la staffa LL e montata tutta la macchina**, modulo penna escluso. Era l'unico taglio del progetto senza seconda possibilità: dalla stecca da 1002 restavano 452 mm, meno di un secondo pezzo
+- **Il disallineamento delle rotaie è stato risolto in montaggio**, non in CAD: i 22,9 mm di corsa che costava sono recuperati sulla macchina vera
+- **Rinominati gli assi in tutto il codice.** Non era solo nomenclatura: nel firmware e in FluidNC il nome dell'asse *è* la mappatura dei pin, quindi cambiare i commenti e basta avrebbe lasciato i pulsanti attaccati al motore sbagliato. Scambiati i `#define STEP/DIR` della dashboard, i blocchi `x:`/`y:` del config FluidNC — step, direction **e** finecorsa, perché i pulsanti stanno fisicamente sugli assi — e le etichette dei pin nell'interfaccia e nel README. Il cablaggio in breadboard non cambia
+- **Scritta la scheda di misura del primo asse** (`misure/primo-asse.md`), poi corretta due volte prima ancora di essere usata. Primo errore mio: avevo chiesto 6400 impulsi e una misura di 188,496 mm, che **in un calibro da 150 non ci sta**. Secondo: il metodo differenziale con le punte del calibro infilate nelle cave cancella l'errore sistematico di appoggio ma non la dispersione, perché una punta piatta in una cava a V appoggia ogni volta a un'altezza diversa. Riscritta col **metodo dei perni** — due tondini identici nelle cave, `p = (R30 - R10)/20`, dove il diametro si cancella nella sottrazione e la campata lunga dimezza l'errore
+- **Documentato nel README della dashboard perché i motori fischiano** appena arrivano i 12 V, con la prova che distingue il caso benigno (togliere la spunta ai driver: il fischio deve cessare di colpo) e la tabella dei suoni che invece segnalano un guasto — compreso il ticchettio da hiccup, che è il sintomo inseguito per due giorni col servo
+- **Prova di movimento a macchina montata:** motori senza difficoltà anche alla velocità massima, gioco d'ingranamento "quasi zero" a mano, struttura rigida. Numeri grezzi non ancora presi
+
+**Decisioni prese:**
+
+1. **Nomi degli assi secondo la convenzione cartesiana del foglio.**
+   - Contesto: in fase di prova X e Y erano assegnati come capitava, e risultavano scambiati rispetto a come li legge chi guarda il foglio
+   - Decisione: **X** è la trave del portale (staffa LL), **Y** sono le due rotaie di base (staffe TT)
+   - Conseguenza documentale: tutte le voci e le note anteriori a oggi usano i nomi vecchi e **non sono state riscritte**. L'avvertenza è nelle Convenzioni in testa alla Pipeline
+   - Da rivedere se: mai. Scoprirlo guardando un disegno ruotato di 90° sarebbe peggio
+
+2. **La quota di appoggio della penna la dà il servo, in presa rigida.**
+   - Contesto: l'architettura del 2026-10-01 prevedeva discesa per gravità con servo staccato in appoggio. L'utente teme che la catena non sia abbastanza sciolta perché il peso della penna la porti giù, e preferisce dare l'altezza e provare
+   - Decisione: presa rigida nei due versi, angolo di appoggio tarato e salvato nelle impostazioni
+   - **Supera la decisione del: 2026-10-01** — scelta dell'utente dopo aver sentito l'argomento opposto
+   - Alternativa accantonata, non scartata: discesa per gravità. I tre motivi originali restano validi (carta non piana, nessuna taratura di Z, nessun jitter sulla punta). Nota tecnica per quel giorno: la discesa per gravità **non chiede un servo reversibile** — il servo allontana attivamente il braccetto — quindi il fattore che decide è l'attrito della guida, non la scioltezza del servo
+   - Da rivedere se: la linea esce di spessore diverso secondo il punto del foglio, o se l'angolo di appoggio va rifatto a ogni cambio di foglio
+   - Vincolo di progetto che la decisione porta con sé: con braccetto da 30 mm, 1° di servo vale 0,52 mm alla punta e la corsa di 4 mm sta in 7,6° — otto posizioni in tutto. Va risolto nel CAD accorciando il braccetto, non dopo la stampa
+
+3. **La webapp si chiama GDC CNC 2D SLICER, e la sua tab Impostazioni è l'unica fonte di verità.**
+   - Contesto: gli stessi numeri di taratura vivono oggi in tre posti che non si parlano — i `#define` del firmware, il `cnc2d-config.yaml` e i default dell'anteprima
+   - Decisione: la tab Impostazioni contiene, salva ed esporta i valori; anteprima, generatore di G-code e macchina leggono da lì. La lista dei gruppi di valori è nello Step 4
+   - Alternativa scartata: continuare a cambiare lo stesso numero in tre file, che è il modo per ritrovarsi un'anteprima che mostra un disegno diverso da quello che la macchina fa
+
+4. **Misure di taratura rinviate dopo il modulo penna.**
+   - Contesto: le tre misure erano la priorità dichiarata dal 2026-10-13
+   - Decisione dell'utente: aspettare la penna, perché a quel punto la taratura si fa disegnando una linea lunga e misurandola — una misura di tutta la catena, per asse, invece del solo passo della cremagliera
+   - Da rivedere se: la linea disegnata non torna e serve separare i contributi; allora si usa la procedura col calibro, che resta scritta
+
+**File consegnati/modificati:**
+- `misure/primo-asse.md` — nuovo, poi rivisto due volte (metodo dei perni, limite della dilatazione del PLA)
+- `firmware/cnc2d_dashboard/cnc2d_dashboard.ino` — `#define` STEP/DIR scambiati, etichette dei pin nell'interfaccia
+- `firmware/cnc2d_dashboard/README.md` — sezione sul fischio a motore fermo, pin aggiornati
+- `firmware/fluidnc/cnc2d-config.yaml` — blocchi `x:`/`y:` scambiati con i rispettivi finecorsa
+- `documento-sessione-cnc-2d.md` — questa voce, le Convenzioni, Step 4, 5 e 6
+
+**Impatto su Vision/Pipeline:** aggiunto un blocco **Convenzioni** in testa alla Pipeline (nomi assi, nomi staffe, nome dell'applicazione) valido per tutti gli step. Step 4 rinominato col nome dell'applicazione e arricchito della specifica della tab Impostazioni. Step 5 passa a **completato nella struttura**. Step 6 passa a **in corso** e diventa il collo di bottiglia di tutto il progetto.
+
+---
 
 ### [2026-10-13 12:31] (contenuti) Registro episodi ancorato al lavoro reale, archivio firmware storico, tracker costi e primi asset grafici
 
