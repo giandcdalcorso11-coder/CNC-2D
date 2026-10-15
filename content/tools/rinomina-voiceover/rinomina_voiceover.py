@@ -8,7 +8,13 @@ Uso:
 
 Richiede: pip install faster-whisper
 
-I file audio vengono rinominati sul posto (non spostati, non duplicati).
+I file audio vengono rinominati sul posto (non spostati, non duplicati), con
+un numero progressivo a 3 cifre davanti (es. 006-oggi-monto-il-carrello.mp4)
+per mantenere l'ordine cronologico anche se i nomi, in ordine alfabetico,
+si mischierebbero. Il numero riparte sempre da (il piu' alto gia' presente
+nella cartella + 1): se rinomini a mano i primi file con lo stesso schema
+NNN-qualcosa, lo script continua da li'.
+
 Per ognuno viene creato un file .txt con la trascrizione integrale.
 Lo storico delle rinomine (nome originale -> nuovo nome, data/ora) resta in
 _elaborati.json; _log-trascrizioni.csv tiene lo stesso storico in formato
@@ -26,12 +32,24 @@ LOG_NAME = "_log-trascrizioni.csv"
 PROCESSED_NAME = "_elaborati.json"
 MAX_WORDS = 10
 MAX_LEN = 60
+NUM_DIGITS = 3
+NUM_PATTERN = re.compile(r"^(\d{%d})-" % NUM_DIGITS)
 
 
 def slugify(text, max_words=MAX_WORDS, max_len=MAX_LEN):
     words = re.findall(r"[A-Za-zÀ-ÿ0-9]+", text.lower())[:max_words]
     slug = "-".join(words)
     return slug[:max_len].rstrip("-") or "senza-testo"
+
+
+def next_number(src_dir):
+    max_n = 0
+    for f in src_dir.iterdir():
+        if f.is_file():
+            m = NUM_PATTERN.match(f.name)
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+    return max_n + 1
 
 
 def load_model():
@@ -44,13 +62,14 @@ def transcribe(model, path):
     return " ".join(seg.text.strip() for seg in segments).strip()
 
 
-def process_file(model, src, log_path):
+def process_file(model, src, number, log_path):
     text = transcribe(model, src)
     slug = slugify(text)
-    dest = src.with_name(f"{slug}{src.suffix.lower()}")
+    base = f"{number:0{NUM_DIGITS}d}-{slug}"
+    dest = src.with_name(f"{base}{src.suffix.lower()}")
     i = 2
     while dest.exists():
-        dest = src.with_name(f"{slug}-{i}{src.suffix.lower()}")
+        dest = src.with_name(f"{base}-{i}{src.suffix.lower()}")
         i += 1
     original_name = src.name
     src.rename(dest)
@@ -83,6 +102,7 @@ def main():
     def scan_once():
         changed = False
         already_renamed = {entry["rinominato_in"] for entry in processed.values()}
+        counter = next_number(src_dir)
         for f in sorted(src_dir.iterdir()):
             if (
                 f.is_file()
@@ -91,12 +111,13 @@ def main():
                 and f.name not in already_renamed
             ):
                 try:
-                    original_name, new_name = process_file(model, f, log_path)
+                    original_name, new_name = process_file(model, f, counter, log_path)
                     processed[original_name] = {
                         "rinominato_in": new_name,
                         "quando": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     already_renamed.add(new_name)
+                    counter += 1
                     changed = True
                 except Exception as e:
                     print(f"Errore su {f.name}: {e}")

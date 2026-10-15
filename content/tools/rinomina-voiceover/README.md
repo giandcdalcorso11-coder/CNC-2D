@@ -36,10 +36,29 @@ python rinomina_voiceover.py .            rem elabora una volta i file nuovi
 python rinomina_voiceover.py . --watch    rem resta in ascolto come il .bat
 ```
 
+## Ordine cronologico
+
+Il nome del file testuale non segue l'ordine di registrazione, quindi lo
+script antepone un **numero progressivo a 3 cifre** (es.
+`006-oggi-montiamo-il-carrello-y.mp4`). A ogni avvio controlla il numero più
+alto già presente nella cartella e riparte da lì.
+
+Se rinomini a mano i primi file (come nel caso di averne già 5), usa lo
+stesso schema — `NNN-` davanti, il resto come preferisci — es.:
+```
+001-idea-del-progetto.mp4
+002-primo-led.mp4
+003-circuito-start.mp4
+004-ota.mp4
+005-dashboard-log.mp4
+```
+Alla run successiva lo script vedrà `005` come numero più alto e il
+prossimo file nuovo diventerà `006-...`.
+
 ## Cosa produce
 
 I file audio vengono **rinominati sul posto** (es. `WhatsApp Audio
-2026-10-15 at 22.50.54.mp4` → `oggi-montiamo-il-carrello-y.mp4`), non
+2026-10-15 at 22.50.54.mp4` → `006-oggi-montiamo-il-carrello-y.mp4`), non
 copiati altrove. Per ognuno trovi anche:
 - un file `.txt` con la **trascrizione integrale**, comodo da incollare
   direttamente in `content/instagram-series.md` come bozza di voice over
