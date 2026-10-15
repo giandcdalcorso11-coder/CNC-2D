@@ -8,14 +8,17 @@ Uso:
 
 Richiede: pip install faster-whisper
 
-I file originali non vengono toccati: vengono create copie rinominate
-(più una trascrizione .txt) dentro <cartella>/rinominati.
+I file audio vengono rinominati sul posto (non spostati, non duplicati).
+Per ognuno viene creato un file .txt con la trascrizione integrale.
+Lo storico delle rinomine (nome originale -> nuovo nome, data/ora) resta in
+_elaborati.json; _log-trascrizioni.csv tiene lo stesso storico in formato
+apribile con Excel, con anche il testo trascritto.
 """
 import argparse
 import json
 import re
-import shutil
 import time
+from datetime import datetime
 from pathlib import Path
 
 AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".opus", ".flac", ".caf", ".mp4"}
@@ -41,55 +44,65 @@ def transcribe(model, path):
     return " ".join(seg.text.strip() for seg in segments).strip()
 
 
-def process_file(model, src, out_dir, log_path):
+def process_file(model, src, log_path):
     text = transcribe(model, src)
     slug = slugify(text)
-    dest = out_dir / f"{slug}{src.suffix.lower()}"
+    dest = src.with_name(f"{slug}{src.suffix.lower()}")
     i = 2
     while dest.exists():
-        dest = out_dir / f"{slug}-{i}{src.suffix.lower()}"
+        dest = src.with_name(f"{slug}-{i}{src.suffix.lower()}")
         i += 1
-    shutil.copy2(src, dest)
-    (out_dir / f"{dest.stem}.txt").write_text(text, encoding="utf-8")
+    original_name = src.name
+    src.rename(dest)
+    dest.with_suffix(".txt").write_text(text, encoding="utf-8")
     with open(log_path, "a", encoding="utf-8", newline="") as f:
         safe_text = text.replace('"', "'")
-        f.write(f'"{src.name}";"{dest.name}";"{safe_text}"\n')
-    print(f"{src.name}  ->  {dest.name}")
-    return dest
+        f.write(f'"{original_name}";"{dest.name}";"{safe_text}"\n')
+    print(f"{original_name}  ->  {dest.name}")
+    return original_name, dest.name
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cartella")
     ap.add_argument("--watch", action="store_true", help="resta in ascolto su nuovi file")
-    ap.add_argument("--out", default=None, help="cartella di output (default: <cartella>/rinominati)")
     args = ap.parse_args()
 
     src_dir = Path(args.cartella)
-    out_dir = Path(args.out) if args.out else src_dir / "rinominati"
-    out_dir.mkdir(parents=True, exist_ok=True)
     processed_path = src_dir / PROCESSED_NAME
-    log_path = out_dir / LOG_NAME
+    log_path = src_dir / LOG_NAME
     if not log_path.exists():
         log_path.write_text('"file originale";"file rinominato";"trascrizione"\n', encoding="utf-8")
-    processed = set(json.loads(processed_path.read_text())) if processed_path.exists() else set()
+
+    raw = json.loads(processed_path.read_text()) if processed_path.exists() else {}
+    processed = raw if isinstance(raw, dict) else {}
 
     print("Carico il modello di trascrizione (la prima volta scarica il modello, poi resta in cache)...")
     model = load_model()
 
     def scan_once():
         changed = False
+        already_renamed = {entry["rinominato_in"] for entry in processed.values()}
         for f in sorted(src_dir.iterdir()):
-            if f.is_file() and f.suffix.lower() in AUDIO_EXT and f.name not in processed:
+            if (
+                f.is_file()
+                and f.suffix.lower() in AUDIO_EXT
+                and f.name not in processed
+                and f.name not in already_renamed
+            ):
                 try:
-                    process_file(model, f, out_dir, log_path)
-                    processed.add(f.name)
+                    original_name, new_name = process_file(model, f, log_path)
+                    processed[original_name] = {
+                        "rinominato_in": new_name,
+                        "quando": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                    already_renamed.add(new_name)
                     changed = True
                 except Exception as e:
                     print(f"Errore su {f.name}: {e}")
         if changed:
             processed_path.write_text(
-                json.dumps(sorted(processed), ensure_ascii=False, indent=2), encoding="utf-8"
+                json.dumps(processed, ensure_ascii=False, indent=2), encoding="utf-8"
             )
 
     scan_once()

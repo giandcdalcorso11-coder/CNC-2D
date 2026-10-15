@@ -1,8 +1,8 @@
 # Rinomina automatica dei voice over
 
 Script che ascolta la cartella dove scarichi i voice over dal telefono, trascrive
-ogni audio (in italiano) e crea una copia rinominata col testo di quello che dici
-dentro — così non devi più ricordarti a memoria cosa c'è in "REC0412.m4a".
+ogni audio (in italiano) e **rinomina il file sul posto** col testo di quello
+che dici dentro — così non devi più ricordarti a memoria cosa c'è in "REC0412.m4a".
 
 Gira **sul tuo PC**, non in questa sessione cloud: la trascrizione è locale
 (modello Whisper via `faster-whisper`), quindi non carichi niente online, è
@@ -21,31 +21,33 @@ gratis e funziona anche offline dopo il primo avvio.
 
 ## Uso
 
-Metti i voice over grezzi in una cartella qualsiasi, ad esempio
-`C:\Users\<te>\Desktop\voiceover-grezzi`, poi:
+**Il modo più comodo: doppio click.** Metti `rinomina_voiceover.py` e
+`rinomina voice over.bat` nella stessa cartella dove scarichi i voice over
+(es. `0-voice over`), poi fai doppio click su **`rinomina voice over.bat`**:
+si apre da sola una finestra, parte in ascolto su quella cartella, e da quel
+momento ogni nuovo file audio che ci metti dentro viene trascritto e
+rinominato entro pochi secondi, senza aprire tu stesso nessun terminale.
+Lasciala aperta (anche ridotta a icona) mentre lavori; chiuderla ferma
+l'ascolto.
 
-**Elaborazione una tantum** (processa solo i file nuovi da quell'ultima volta):
+**In alternativa, da riga di comando** (stessa cartella dei voice over):
 ```
-python rinomina_voiceover.py "C:\Users\<te>\Desktop\voiceover-grezzi"
+python rinomina_voiceover.py .            rem elabora una volta i file nuovi
+python rinomina_voiceover.py . --watch    rem resta in ascolto come il .bat
 ```
-
-**Modalità automatica** (resta in ascolto, utile se tieni la cartella
-sincronizzata col telefono — es. Google Drive, cavo, AirDrop):
-```
-python rinomina_voiceover.py "C:\Users\<te>\Desktop\voiceover-grezzi" --watch
-```
-Lascia la finestra aperta mentre lavori: ogni nuovo file che compare nella
-cartella viene trascritto e rinominato entro pochi secondi, senza che tu
-debba rilanciare nulla. Ctrl+C per fermarlo.
 
 ## Cosa produce
 
-Dentro `voiceover-grezzi\rinominati\` trovi, per ogni audio:
-- la **copia rinominata** col testo (es. `oggi-montiamo-il-carrello-y.m4a`) —
-  l'originale nella cartella di partenza non viene toccato né spostato
+I file audio vengono **rinominati sul posto** (es. `WhatsApp Audio
+2026-10-15 at 22.50.54.mp4` → `oggi-montiamo-il-carrello-y.mp4`), non
+copiati altrove. Per ognuno trovi anche:
 - un file `.txt` con la **trascrizione integrale**, comodo da incollare
   direttamente in `content/instagram-series.md` come bozza di voice over
-- `_log-trascrizioni.csv` con lo storico di tutte le rinomine fatte
+- `_elaborati.json`, lo **storico delle rinomine** (nome originale → nuovo
+  nome, data/ora), che serve anche allo script per non ritrascrivere due
+  volte lo stesso file
+- `_log-trascrizioni.csv`, lo stesso storico in formato apribile con Excel,
+  con in più il testo trascritto per ogni voce
 
 ## Limiti da sapere
 
