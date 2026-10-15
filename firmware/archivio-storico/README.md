@@ -1,4 +1,4 @@
-# Archivio storico — cnc2d_dashboard
+# Archivio storico — Pannello di controllo manuale GDC CNC 2D
 
 Snapshot del firmware `cnc2d_dashboard.ino` estratti dalla cronologia git, uno per ogni tappa
 significativa. Utili per rigirare i test degli episodi passati con il codice esattamente

@@ -43,9 +43,23 @@ intende la corsa del portale sulle rotaie di base, che oggi si chiama Y.
 **Nomi delle staffe (dal 2026-10-12).** **Staffa TT** = le due rotaie da 400.
 **Staffa LL** = la trave del portale da 550.
 
-**Nome dell'applicazione (dal 2026-10-15): GDC CNC 2D SLICER.** È la webapp
-dello Step 4, quella che importa il disegno, genera il G-code e comanda la
-macchina.
+**Nomi delle due applicazioni (dal 2026-10-15).** Il progetto ne ha due, con
+ruoli diversi, e non si sostituiscono a vicenda:
+
+- **GDC CNC 2D SLICER** — l'applicazione vera: la webapp dello Step 4 (`webui/`)
+  più la configurazione FluidNC che la esegue (`firmware/fluidnc/`). Importa il
+  disegno, genera il G-code, comanda la macchina
+- **Pannello di controllo manuale GDC CNC 2D** — lo strumento di collaudo dello
+  Step 1.1 (`firmware/cnc2d_dashboard/`): frecce, un giro di pignone, slider del
+  servo, log, OTA. Serve a montare e diagnosticare, non a disegnare
+
+La cartella e il file dello sketch restano `cnc2d_dashboard`: l'IDE Arduino
+esige che cartella e sketch abbiano lo stesso nome e non accetta spazi, quindi
+il nome esteso vive nel titolo della pagina e nei README, non nel filesystem.
+
+**Il repository GitHub si chiama `GDC-CNC-2D`** (dal 2026-10-15; GitHub
+sostituisce gli spazi con trattini). L'URL precedente resta funzionante per
+redirezione automatica.
 
 ### Step 1 — Bring-up alimentazione e logica ESP32
 

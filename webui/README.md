@@ -1,4 +1,4 @@
-# Interfaccia web CNC-2D
+# GDC CNC 2D SLICER
 
 L'interfaccia di controllo e preparazione del disegno. Non sostituisce la WebUI
 di FluidNC: la affianca, occupandosi di tutto ciò che sta *prima* del G-code —

@@ -15,7 +15,7 @@ var Gcode = (function () {
     var L = [];
     var zUp = opt.penUp, zDown = opt.penDown;
 
-    L.push('; CNC-2D');
+    L.push('; GDC CNC 2D SLICER');
     L.push('; ' + polys.length + ' tratti, generato dall\'interfaccia');
     L.push('; penna alzata Z' + n(zUp) + ', abbassata Z' + n(zDown) + ' - DA TARARE');
     L.push('G21');            // millimetri

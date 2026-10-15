@@ -1,4 +1,4 @@
-# CNC-2D Dashboard — ESP32 (strumento di collaudo)
+# Pannello di controllo manuale GDC CNC 2D — ESP32 (strumento di collaudo)
 
 > **Questo non è il firmware definitivo della macchina.** Il firmware finale è FluidNC,
 > vedi `firmware/fluidnc/`. Questo sketch resta come **banco di collaudo dell'hardware**:

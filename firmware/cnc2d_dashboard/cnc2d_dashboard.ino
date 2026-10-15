@@ -521,7 +521,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CNC-2D Dashboard</title>
+<title>GDC CNC 2D &mdash; Pannello di controllo manuale</title>
 <style>
   :root{--bg:#111;--panel:#1b1b1f;--accent:#3b82f6;--text:#eee;--muted:#999;--danger:#ef4444;}
   *{box-sizing:border-box;}
@@ -588,7 +588,7 @@ const char PAGE_HTML[] PROGMEM = R"rawliteral(
 </style>
 </head>
 <body>
-<header><h1>CNC-2D &mdash; Pannello di controllo</h1></header>
+<header><h1>GDC CNC 2D &mdash; Pannello di controllo manuale</h1></header>
 <div class="tabs">
   <button class="tab-btn active" data-tab="controllo">Controllo</button>
   <button class="tab-btn" data-tab="motore">Motore</button>

@@ -1,4 +1,4 @@
-# CNC-2D — FluidNC
+# GDC CNC 2D SLICER — firmware FluidNC
 
 FluidNC è il firmware definitivo della macchina. Sostituisce interamente lo sketch in
 `firmware/cnc2d_dashboard/`, che da qui in poi resta solo come strumento di collaudo

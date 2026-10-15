@@ -1,4 +1,4 @@
-# CNC-2D — configurazione FluidNC
+# GDC CNC 2D SLICER — configurazione FluidNC
 #
 # ATTENZIONE: questa è una configurazione di partenza, non definitiva.
 # I valori marcati DA TARARE dipendono dalla meccanica, che non è ancora montata.
@@ -7,7 +7,7 @@
 #
 # Riferimento schema: http://wiki.fluidnc.com/en/config/overview
 
-name: CNC-2D Plotter
+name: GDC CNC 2D
 board: ESP32 Dev Module
 
 stepping:
