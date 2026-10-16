@@ -265,7 +265,116 @@ sezione 1 (valori con j = 0,30), un <strong>linear pattern</strong> a passo 4,71
 &times; 6, ed estrusione da 8 mm. Non cercare una feature apposta: con i fianchi
 rettilinei lo sketch &egrave; pi&ugrave; veloce e ti lascia il controllo del gioco.</p>
 
-<h2>4. L'ingranaggio sul braccetto: sì, ed è la scelta giusta</h2>
+<h2>4. La stecca finita: quote e posizione</h2>
+
+<div class="note">
+Calcolata su <code>prova_3</code>. Origine della stecca sulla <b>faccia inferiore
+di pz2, Y = &minus;30,000</b>, come hai chiesto. Centro del pignone misurato nel
+CAD a <b>X = &minus;37,500</b>, raggio primitivo 18,750.
+</div>
+
+<figure>
+<svg viewBox="0 0 760 520" role="img"
+     aria-label="Posizione della cremagliera su pz2: nove denti a partire dalla faccia inferiore, con la linea primitiva a X meno 18,750 e il campo di ingranamento del pignone">
+  <defs>
+    <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+    <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  </defs>
+  <!-- parete di pz2 -->
+  <rect x="470" y="40" width="120" height="440" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <text x="530" y="30" font-size="12" fill="currentColor" text-anchor="middle">parete di pz2</text>
+  <!-- stecca, 9 denti schematici -->
+  <g stroke="currentColor" stroke-width="2.4" fill="none">
+    <path d="M470,440 L470,45"/>
+  </g>
+  <g stroke="currentColor" stroke-width="2" fill="none">
+    <path d="M470,434 l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14
+             l-26,-10 l0,-18 l26,-10 l0,-14"/>
+  </g>
+  <!-- linea primitiva -->
+  <line x1="452" y1="36" x2="452" y2="484" stroke="#c2410c" stroke-width="1.6" stroke-dasharray="14 5 3 5"/>
+  <text x="300" y="500" font-size="12" fill="#c2410c">linea primitiva a X = −18,750</text>
+  <!-- pignone -->
+  <circle cx="302" cy="250" r="150" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
+  <circle cx="302" cy="250" r="6" fill="currentColor"/>
+  <text x="180" y="250" font-size="12" fill="currentColor" text-anchor="middle">pignone z25</text>
+  <text x="180" y="266" font-size="12" fill="currentColor" text-anchor="middle">X −37,500</text>
+  <!-- origine -->
+  <line x1="430" y1="440" x2="640" y2="440" stroke="currentColor" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="648" y="444" font-size="12" fill="currentColor">Y = −30,000</text>
+  <text x="648" y="459" font-size="11" fill="currentColor" opacity=".7">faccia inf. di pz2</text>
+  <!-- campo di ingranamento -->
+  <g stroke="#c2410c" stroke-width="1.6">
+    <line x1="408" y1="155" x2="408" y2="330" marker-start="url(#d1)" marker-end="url(#d1)"/>
+  </g>
+  <text x="396" y="214" font-size="12" fill="#c2410c" text-anchor="end">campo di</text>
+  <text x="396" y="229" font-size="12" fill="#c2410c" text-anchor="end">ingranamento</text>
+  <text x="396" y="244" font-size="12" fill="#c2410c" text-anchor="end">26,350</text>
+  <!-- lunghezza totale -->
+  <g stroke="currentColor" stroke-width="1.4">
+    <line x1="676" y1="45" x2="676" y2="440" marker-start="url(#d2)" marker-end="url(#d2)"/>
+  </g>
+  <text x="686" y="236" font-size="12" fill="currentColor">9 denti</text>
+  <text x="686" y="252" font-size="12" fill="currentColor">42,412</text>
+</svg>
+<figcaption>
+  Nove denti a partire dalla faccia inferiore di <code>pz2</code>. Il campo in cui
+  il pignone ingrana durante tutta la corsa della guida &egrave; lungo 26,350 e cade
+  dentro la dentatura con un dente di margine a ciascun estremo.
+</figcaption>
+</figure>
+
+<h3>Posizione</h3>
+<table>
+<tr><th>Cosa</th><th>Valore</th></tr>
+<tr><td>Linea primitiva della stecca</td><td class="k">X = &minus;18,750</td></tr>
+<tr><td>Linea di fondo (root)</td><td class="n">X = &minus;16,875 &nbsp;&mdash;&nbsp; 0,375 fuori dalla parete a &minus;16,500</td></tr>
+<tr><td>Cresta dei denti</td><td class="n">X = &minus;20,250</td></tr>
+<tr><td>Origine della stecca</td><td class="k">Y = &minus;30,000 (faccia inferiore di pz2)</td></tr>
+<tr><td>Numero di denti</td><td class="k">9</td></tr>
+<tr><td>Lunghezza dentata</td><td class="n">42,412</td></tr>
+<tr><td>Larghezza (in Z)</td><td class="k">6,000</td></tr>
+</table>
+
+<h3>Profilo, con l'offset di gioco gi&agrave; dentro</h3>
+<table>
+<tr><th>Quota</th><th>Valore da disegnare</th><th>(nominale a gioco zero)</th></tr>
+<tr><td>Passo</td><td class="k">4,71239</td><td class="n">invariato</td></tr>
+<tr><td>Addendum (primitiva &rarr; cresta)</td><td class="k">1,50000</td><td class="n">invariato</td></tr>
+<tr><td>Dedendum (primitiva &rarr; fondo)</td><td class="k">1,87500</td><td class="n">invariato</td></tr>
+<tr><td>Semilarghezza alla primitiva</td><td class="k">1,02810</td><td class="n">1,17810</td></tr>
+<tr><td>Semilarghezza alla cresta</td><td class="k">0,48214</td><td class="n">0,63214</td></tr>
+<tr><td>Semilarghezza al fondo</td><td class="k">1,71055</td><td class="n">1,86054</td></tr>
+<tr><td>Raccordo al fondo</td><td class="k">0,40</td><td class="n">max 0,645</td></tr>
+</table>
+
+<h3>Mezzeria di ciascun dente, in Y</h3>
+<table>
+<tr><th>Dente</th><th>Y della mezzeria</th></tr>
+<tr><td class='n'>1</td><td class='n'>-27.644</td></tr>
+<tr><td class='n'>2</td><td class='n'>-22.931</td></tr>
+<tr><td class='n'>3</td><td class='n'>-18.219</td></tr>
+<tr><td class='n'>4</td><td class='n'>-13.507</td></tr>
+<tr><td class='n'>5</td><td class='n'>-8.794</td></tr>
+<tr><td class='n'>6</td><td class='n'>-4.082</td></tr>
+<tr><td class='n'>7</td><td class='n'>+0.631</td></tr>
+<tr><td class='n'>8</td><td class='n'>+5.343</td></tr>
+<tr><td class='n'>9</td><td class='n'>+10.055</td></tr>
+</table>
+<p>Il primo dente ha la mezzeria a mezzo passo dall'origine, cos&igrave; la stecca
+comincia con mezzo vano e non con mezzo dente: pi&ugrave; robusto da stampare e meno
+soggetto a scheggiarsi all'estremit&agrave;.</p>
+
+<h2>5. L'ingranaggio sul braccetto: sì, ed è la scelta giusta</h2>
 
 <div class="note">
 Stampare la scanalatura del servo è <b>la cosa da non fare</b>. Lo spline di un

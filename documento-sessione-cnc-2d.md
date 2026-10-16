@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 28
-**Ultimo aggiornamento:** 2026-10-16 21:05
+**Versione:** 29
+**Ultimo aggiornamento:** 2026-10-17 10:40
 
 ## Regole di co-editing
 
@@ -466,6 +466,11 @@ mano a mano che le misure arrivano):
 - [2026-10-16] **Perché 0,30 e non meno.** La posizione della cremagliera rispetto all'albero del servo è una catena che passa per la sporgenza stampata su `pz2`, la posizione dei cuscinetti e la sede del servo in `pz1`: realisticamente ±0,3 mm. E un errore di interasse cambia il gioco di `2·tan20° = 0,728` volte sé stesso. Con j nominale 0 il gioco reale va da −0,218 a +0,218, cioè **grippa metà delle volte**; con j = 0,30 va da +0,082 a +0,518 e non grippa mai. E qui il gioco **non costa niente**, perché il giunto a gioco morto rende la forza sulla carta indipendente dalla posizione del pignone: conviene esagerare
 - [2026-10-16] **Il gioco non si fa mai riducendo il modulo.** Mettere 1,48 invece di 1,50 cambia il passo, quindi i denti si disallineano progressivamente lungo la stecca e un ingranamento buono in mezzo si impunta alle estremità. Si fa sullo spessore del dente o sull'interasse
 - [2026-10-16] **Onshape: la feature Spur Gear ufficiale non ha un campo per il gioco** (verificato sul forum Onshape; alcune versioni custom l'hanno aggiunto spostando l'angolo dell'evolvente). È il motivo pratico per cui il gioco va messo nella cremagliera, che è uno sketch a mano e quindi sotto controllo. Parametri del pignone: teeth 20, module 1,5 mm (non diametral pitch), pressure angle 20°, depth 6, root fillet attivo, nessun bore. Tasca, alloggiamento del mozzo, foro di accesso Ø3 e fori M2 come feature separate sul corpo generato
+- [2026-10-17] **prova_3: pignone modellato e `pz2` alleggerito del 27%** (da 63,08 a 46,20 cm³). Zero interferenze fra 24 componenti. Pignone z25 confermato nel CAD: centro X −37,500, Ø esterno 40,41 × 40,48, spessore 10,009. Profondità portata a 10 perché l'incavo del braccetto è 7 e con 8 restava 1 mm solo di presa filetto per le M2; con 10 ne restano 3. **Ci sta, ma è il massimo**: sotto l'albero del servo (Z −52,800) e il fondo di `pz2` (Z −63,100) ci sono 10,30 mm, e il disco ne usa 10
+- [2026-10-17] **Corsa in discesa di `pz2`: 11,000 mm.** La limitano i cuscinetti inferiori (2 e 8) che arrivano in fondo alla pista; la scansione per collisione conferma il primo contatto a 11,1 mm, stesso evento. Fra prova_2 e prova_3 la pista si è accorciata di 5 mm sul lato basso (da Y −35,978 a −30,978) e la discesa è passata da 16,000 a 11,000: allungare la pista verso il basso è la leva se servisse più corsa. Salita 15,350, corsa totale **26,350**
+- [2026-10-17] **La cremagliera vuole 9 denti (42,412).** Con l'origine sulla faccia inferiore di `pz2` (Y −30,000): nella posizione modellata il pignone ingrana a 25,922 dal fondo della stecca, a fine discesa a 36,922, a fine salita a 10,572. Con un dente di presa oltre ciascun estremo servono denti da 5,860 a 41,634, cioè 8,84 passi. **8 denti (37,699) non bastano**
+- [2026-10-17] **Il servo non è il vincolo, e questo smonta il timore del montaggio.** A raggio 18,750 valgono 0,3272 mm per grado: l'intera corsa della guida (26,350) sta in **80,5° su ~180 disponibili**, e la corsa utile di 10 mm in 30,6°. Margine di montaggio **±49,7°, cioè ±16,3 mm**. Lo spline ha 21 denti, quindi le posizioni di montaggio sono quantizzate ogni 17,14° = 5,61 mm: con quel margine va bene qualunque dente entro ±2 posizioni da quella ideale
+- [2026-10-17] **Pignone grande o piccolo, per la forza del servo: non è un criterio.** Forza alla cremagliera = coppia / raggio. Con 1,8 kg·cm (≈177 N·mm) e r = 18,750 escono **9,4 N**; con r = 10,5 (z14) 16,9 N. Ma la massa flottante da sollevare è 0,55÷0,60 N, quindi il margine è **15×** già col pignone grande. Quello che il pignone grande compra davvero: la cremagliera cade sulla parete di `pz2` invece che su una mensola (meno massa flottante, che è il parametro fuori budget) ed è **1,8× più veloce** nell'alzata (0,051 s contro 0,091 per 10 mm), il che però conta poco contro il tempo di assestamento. Criterio vero: la geometria, non la coppia
 
 ## Storico sessioni
 
