@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cremagliera e pignone del pen-lift</title>
+<style>
+  :root{ --bg:#fbfaf8; --fg:#1c1b19; --muted:#6b6862; --rule:#d8d4cd;
+         --accent:#c2410c; --panel:#f2efe9; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#17161a; --fg:#eceae6; --muted:#9a958d;
+      --rule:#363339; --accent:#fb923c; --panel:#201e24; } }
+  :root[data-theme="dark"]{ --bg:#17161a; --fg:#eceae6; --muted:#9a958d;
+      --rule:#363339; --accent:#fb923c; --panel:#201e24; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;}
+  .wrap{max-width:880px;margin:0 auto;padding:40px 16px 80px;}
+  h1{font-size:1.6rem;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 30px;font-size:.95rem}
+  h2{font-size:1.15rem;margin:44px 0 4px;letter-spacing:-.01em}
+  h3{font-size:1rem;margin:28px 0 4px}
+  figure{margin:18px 0 10px;} svg{width:100%;height:auto;display:block}
+  figcaption{color:var(--muted);font-size:.88rem;margin-top:10px;
+             border-left:2px solid var(--rule);padding:6px 0 6px 12px}
+  table{border-collapse:collapse;width:100%;font-size:.9rem;margin:16px 0}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-weight:600;color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .note{background:var(--panel);border-radius:8px;padding:14px 16px;margin:18px 0;font-size:.93rem}
+  .note b{color:var(--accent)}
+  p{margin:12px 0} ul,ol{margin:12px 0;padding-left:22px} li{margin:7px 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;
+       background:var(--panel);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Cremagliera e pignone del pen-lift</h1>
+<p class="sub">GDC CNC 2D · Step 6 · modulo 1,5 · angolo di pressione 20°</p>
+
+<h2>1. Il profilo della cremagliera</h2>
+
+<figure>
+<svg viewBox="0 0 760 470" role="img"
+     aria-label="Profilo quotato di una cremagliera modulo 1,5 con angolo di pressione 20 gradi: tre denti con passo 4,71239, altezza totale 3,375, larghezze alla cresta, alla primitiva e al fondo">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+  </defs>
+
+  <!-- profilo: 3 denti, scala 40 px/mm -->
+  <path d="M40,295 L75.58,295 L124.71,160 L175.29,160 L224.42,295 L264.08,295
+           L313.21,160 L363.79,160 L412.92,295 L452.58,295 L501.71,160 L552.29,160
+           L601.42,295 L641,295 L641,392 L40,392 Z"
+        fill="none" stroke="currentColor" stroke-width="2.6"/>
+
+  <!-- primitiva -->
+  <line x1="24" y1="220" x2="658" y2="220" stroke="#c2410c" stroke-width="1.8" stroke-dasharray="14 5 3 5"/>
+  <text x="664" y="224" font-size="12" fill="#c2410c">primitiva</text>
+
+  <!-- assi dei denti -->
+  <g stroke="currentColor" stroke-width=".9" stroke-dasharray="9 4 2 4" opacity=".55">
+    <line x1="150" y1="140" x2="150" y2="320"/>
+    <line x1="338.5" y1="140" x2="338.5" y2="320"/>
+    <line x1="527" y1="140" x2="527" y2="320"/>
+  </g>
+
+  <!-- passo -->
+  <g stroke="currentColor" stroke-width="1.1">
+    <line x1="150" y1="110" x2="338.5" y2="110" marker-start="url(#a1)" marker-end="url(#a1)"/>
+  </g>
+  <text x="244" y="102" font-size="12.5" fill="currentColor" text-anchor="middle">passo 4,71239</text>
+
+  <!-- larghezza alla cresta -->
+  <g stroke="#c2410c" stroke-width="1.1">
+    <line x1="313.21" y1="142" x2="363.79" y2="142" marker-start="url(#a2)" marker-end="url(#a2)"/>
+  </g>
+  <text x="378" y="138" font-size="12" fill="#c2410c">cresta 1,26428</text>
+
+  <!-- larghezza alla primitiva -->
+  <g stroke="#c2410c" stroke-width="1.1">
+    <line x1="291.38" y1="200" x2="385.62" y2="200" marker-start="url(#a2)" marker-end="url(#a2)"/>
+  </g>
+  <text x="338.5" y="194" font-size="12" fill="#c2410c" text-anchor="middle">2,35619</text>
+
+  <!-- vano al fondo -->
+  <g stroke="#c2410c" stroke-width="1.1">
+    <line x1="224.42" y1="316" x2="264.08" y2="316" marker-start="url(#a2)" marker-end="url(#a2)"/>
+  </g>
+  <text x="244" y="338" font-size="12" fill="#c2410c" text-anchor="middle">vano 0,99131</text>
+
+  <!-- larghezza al fondo -->
+  <g stroke="currentColor" stroke-width="1.1">
+    <line x1="452.58" y1="316" x2="601.42" y2="316" marker-start="url(#a1)" marker-end="url(#a1)"/>
+  </g>
+  <text x="527" y="338" font-size="12" fill="currentColor" text-anchor="middle">fondo 3,72108</text>
+
+  <!-- quote verticali a sinistra -->
+  <g stroke="currentColor" stroke-width="1.1">
+    <line x1="92" y1="160" x2="92" y2="220" marker-start="url(#a1)" marker-end="url(#a1)"/>
+    <line x1="92" y1="220" x2="92" y2="295" marker-start="url(#a1)" marker-end="url(#a1)"/>
+    <line x1="30" y1="160" x2="30" y2="295" marker-start="url(#a1)" marker-end="url(#a1)"/>
+  </g>
+  <text x="100" y="194" font-size="12" fill="currentColor">1,500</text>
+  <text x="100" y="262" font-size="12" fill="currentColor">1,875</text>
+  <text x="22" y="232" font-size="12" fill="currentColor" text-anchor="end">3,375</text>
+
+  <!-- angolo di pressione -->
+  <line x1="501.71" y1="160" x2="501.71" y2="100" stroke="currentColor" stroke-width=".9" stroke-dasharray="5 4" opacity=".6"/>
+  <path d="M501.71,124 A36,36 0 0 0 514.8,131" fill="none" stroke="#c2410c" stroke-width="1.4"/>
+  <text x="524" y="124" font-size="12" fill="#c2410c">20°</text>
+
+  <!-- spessore del dorso -->
+  <g stroke="currentColor" stroke-width="1.1">
+    <line x1="676" y1="295" x2="676" y2="392" marker-start="url(#a1)" marker-end="url(#a1)"/>
+  </g>
+  <text x="684" y="348" font-size="12" fill="currentColor">dorso</text>
+  <text x="684" y="362" font-size="12" fill="currentColor" opacity=".7">≥ 2,5</text>
+
+  <text x="40" y="432" font-size="12" fill="currentColor" opacity=".75">
+    I fianchi sono rette: nessun profilo a evolvente da costruire — l'evolvente sta tutta nel pignone.</text>
+  <text x="40" y="452" font-size="12" fill="currentColor" opacity=".75">
+    Raccordo al fondo: massimo 0,496 (il vano è 0,99131). Consigliato 0,3 ÷ 0,4.</text>
+</svg>
+<figcaption>
+  La cremagliera di un ingranaggio a evolvente ha i fianchi <strong>rettilinei</strong>,
+  inclinati di 20° rispetto alla normale alla primitiva. È il motivo per cui si
+  disegna in trenta secondi: bastano le tre semilarghezze e le due altezze.
+</figcaption>
+</figure>
+
+<h3>La ricetta per il CAD, in cinque passi</h3>
+
+<ol>
+<li>Traccia la <strong>linea primitiva</strong>. È il riferimento di tutto, e nel
+montaggio è la linea che deve stare a <code>raggio primitivo</code> dall'asse del servo.</li>
+<li>Segna la mezzeria del dente. A sinistra e a destra, sulla primitiva, <strong>1,17810</strong>.</li>
+<li>Sali di <strong>1,500</strong> (cresta): i due punti si stringono a <strong>0,63214</strong> per lato.</li>
+<li>Scendi di <strong>1,875</strong> (fondo): i due punti si allargano a <strong>1,86054</strong> per lato.</li>
+<li>Unisci con rette, raccorda il fondo a 0,3÷0,4, e ripeti ogni <strong>4,71239</strong>.</li>
+</ol>
+
+<table>
+<tr><th>Quota</th><th>Valore</th></tr>
+<tr><td>Passo <code>p = π·m</code></td><td class="n">4,71239</td></tr>
+<tr><td>Addendum (primitiva → cresta)</td><td class="n">1,50000</td></tr>
+<tr><td>Dedendum (primitiva → fondo)</td><td class="n">1,87500</td></tr>
+<tr><td>Altezza totale del dente</td><td class="n">3,37500</td></tr>
+<tr><td>Semilarghezza alla cresta</td><td class="n">0,63214</td></tr>
+<tr><td>Semilarghezza alla primitiva</td><td class="n">1,17810</td></tr>
+<tr><td>Semilarghezza al fondo</td><td class="n">1,86054</td></tr>
+<tr><td>Vano al fondo fra due denti</td><td class="n">0,99131</td></tr>
+<tr><td>Raccordo al fondo</td><td class="n">0,30 ÷ 0,40 (max 0,496)</td></tr>
+</table>
+
+<h3>Lunghezza e larghezza della stecca</h3>
+
+<p>Qui la cremagliera è il pezzo che <em>si muove</em> e il pignone sta fermo, quindi
+la stecca deve essere lunga almeno la corsa più la presa a entrambi gli estremi:</p>
+
+<table>
+<tr><th>Denti</th><th>Lunghezza</th><th>Corsa coperta (1 dente di presa per lato)</th></tr>
+<tr><td class="n">5</td><td class="n">23,562</td><td class="n">14,137</td></tr>
+<tr><td class="n">6</td><td class="n">28,274</td><td class="n">18,850</td></tr>
+<tr><td class="n">7</td><td class="n">32,987</td><td class="n">23,562</td></tr>
+</table>
+
+<p><strong>Sei denti bastano</strong> per i 10 mm di corsa con margine abbondante.
+In larghezza: <strong>2 mm più del pignone</strong>, 1 per lato, così un piccolo
+disallineamento assiale non toglie contatto. Pignone da 6 → stecca da 8.</p>
+
+<h2>2. L'ingranaggio sul braccetto: sì, ed è la scelta giusta</h2>
+
+<div class="note">
+Stampare la scanalatura del servo è <b>la cosa da non fare</b>. Lo spline di un
+SG90 ha 21 denti su Ø4,8: ogni dente è alto circa <b>0,3 mm</b>, cioè meno di una
+larghezza di estrusione. In PLA o non ingrana, o ingrana e si spiana al primo
+carico. Il braccetto in dotazione è stampato a iniezione in nylon, ha lo spline
+fatto bene, e arriva con la vite che lo blocca assialmente sull'albero.
+</div>
+
+<figure>
+<svg viewBox="0 0 760 330" role="img"
+     aria-label="Sezione dell'ingranaggio con il braccetto del servo annegato in una tasca, con il foro di accesso alla vite centrale del servo e due viti M2 nei fori già presenti sul braccetto">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+    <pattern id="h2" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="currentColor" stroke-width="1" opacity=".3"/></pattern>
+  </defs>
+
+  <!-- servo -->
+  <rect x="250" y="40" width="260" height="70" fill="url(#h2)" stroke="currentColor" stroke-width="1.8"/>
+  <text x="380" y="80" font-size="12.5" fill="currentColor" text-anchor="middle">corpo del servo</text>
+  <!-- albero scanalato -->
+  <rect x="368" y="110" width="24" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+  <text x="300" y="130" font-size="11.5" fill="currentColor" text-anchor="end">albero scanalato Ø4,8</text>
+  <line x1="306" y1="126" x2="364" y2="126" stroke="currentColor" stroke-width=".9" opacity=".6"/>
+
+  <!-- braccetto -->
+  <rect x="290" y="140" width="180" height="16" fill="none" stroke="#c2410c" stroke-width="2.6"/>
+  <text x="496" y="152" font-size="12.5" fill="#c2410c">braccetto in dotazione</text>
+
+  <!-- ingranaggio -->
+  <path d="M190,156 L570,156 L570,236 L190,236 Z" fill="none" stroke="currentColor" stroke-width="2.6"/>
+  <!-- tasca -->
+  <path d="M286,156 L286,140 L474,140 L474,156" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <!-- denti schematici -->
+  <g stroke="currentColor" stroke-width="2">
+    <path d="M190,170 l-14,0 M190,186 l-14,0 M190,202 l-14,0 M190,218 l-14,0"/>
+    <path d="M570,170 l14,0 M570,186 l14,0 M570,202 l14,0 M570,218 l14,0"/>
+  </g>
+  <text x="140" y="200" font-size="12.5" fill="currentColor" text-anchor="middle">denti</text>
+  <text x="620" y="200" font-size="12.5" fill="currentColor" text-anchor="middle">denti</text>
+
+  <!-- foro di accesso alla vite del servo -->
+  <rect x="368" y="156" width="24" height="80" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-dasharray="7 4"/>
+  <text x="380" y="266" font-size="12" fill="#c2410c" text-anchor="middle">foro di accesso Ø3</text>
+  <text x="380" y="282" font-size="12" fill="#c2410c" text-anchor="middle">alla vite del servo</text>
+  <line x1="380" y1="236" x2="380" y2="252" stroke="#c2410c" stroke-width="1.2"/>
+
+  <!-- viti M2 nei fori esistenti del braccetto -->
+  <g stroke="currentColor" stroke-width="2">
+    <line x1="314" y1="134" x2="314" y2="206"/><line x1="446" y1="134" x2="446" y2="206"/>
+    <rect x="308" y="128" width="12" height="8" fill="none"/><rect x="440" y="128" width="12" height="8" fill="none"/>
+  </g>
+  <text x="314" y="118" font-size="11.5" fill="currentColor" text-anchor="middle">M2</text>
+  <text x="446" y="118" font-size="11.5" fill="currentColor" text-anchor="middle">M2</text>
+  <text x="596" y="128" font-size="11.5" fill="currentColor">nei fori che</text>
+  <text x="596" y="143" font-size="11.5" fill="currentColor">il braccetto ha già</text>
+
+  <!-- quota web -->
+  <g stroke="currentColor" stroke-width="1.1">
+    <line x1="230" y1="156" x2="230" y2="236" marker-start="url(#a3)" marker-end="url(#a3)"/>
+  </g>
+  <text x="222" y="200" font-size="12" fill="currentColor" text-anchor="end">corpo</text>
+
+  <text x="40" y="312" font-size="12" fill="currentColor" opacity=".75">
+    Il braccetto centra l'ingranaggio sul suo mozzo tondo, non sui bracci: i bracci servono solo a non farlo girare.</text>
+</svg>
+<figcaption>
+  Il braccetto va <strong>annegato</strong> in una tasca, non incollato di piatto.
+  Il foro di accesso centrale è il dettaglio che si dimentica: senza, dopo aver
+  incollato non arrivi più alla vite che tiene il braccetto sull'albero, e per
+  smontare devi distruggere l'ingranaggio.
+</figcaption>
+</figure>
+
+<h3>Quanto braccetto ci sta dentro</h3>
+
+<p>La tasca non può arrivare al fondo dei denti: sotto serve del materiale.
+Lasciando 2 mm di spalla, il diametro massimo della tasca è
+<code>m·(z − 2,5) − 4</code>:</p>
+
+<table>
+<tr><th>Pignone</th><th>Ø primitivo</th><th>Ø al fondo</th><th>Tasca max</th><th>Sporgenza cremagliera da pz2</th></tr>
+<tr><td class="n">z 14</td><td class="n">21,0</td><td class="n">17,25</td><td class="n">13,25</td><td class="n">11,95</td></tr>
+<tr><td class="n">z 20</td><td class="n">30,0</td><td class="n">26,25</td><td class="n">22,25</td><td class="n">7,45</td></tr>
+<tr><td class="n">z 24</td><td class="n">36,0</td><td class="n">32,25</td><td class="n">28,25</td><td class="n">4,45</td></tr>
+<tr><td class="n">z 28</td><td class="n">42,0</td><td class="n">38,25</td><td class="n">34,25</td><td class="n">1,45</td></tr>
+</table>
+
+<p><strong>Taglia i due bracci lunghi a filo del mozzo e tieni i due corti.</strong>
+La croce a due bracci è più che sufficiente: la coppia in gioco è di circa 2 N·mm,
+che su un braccio da 10 mm fa 0,2 N. Misura col calibro la campata dei due bracci
+corti e scegli il pignone dalla colonna "tasca max".</p>
+
+<h3>Le cinque cose da mettere nel CAD</h3>
+<ul>
+<li><strong>Foro di accesso Ø3 sull'asse</strong>, passante per tutto lo spessore
+dell'ingranaggio, per arrivare con il cacciavite alla vite del servo.</li>
+<li><strong>Centraggio sul mozzo tondo del braccetto</strong>, non sui bracci: il
+mozzo è concentrico allo spline, i bracci no necessariamente. I bracci stanno in
+una tasca sagomata con 0,2 di gioco e servono solo da chiavetta.</li>
+<li><strong>Due viti M2</strong> nei fori che il braccetto ha già, avvitate in due
+torrette stampate. Meglio della colla: positivo, e smontabile.</li>
+<li><strong>Larghezza del pignone</strong> 6 mm, contro gli 8 della cremagliera.</li>
+<li><strong>Stampa l'ingranaggio sdraiato</strong>, asse verticale: così il profilo
+dei denti lo disegna il movimento XY della testa, che è il più preciso, invece
+degli strati.</li>
+</ul>
+
+</div>
+</body>
+</html>
