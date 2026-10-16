@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 22
-**Ultimo aggiornamento:** 2026-10-15 19:20
+**Versione:** 23
+**Ultimo aggiornamento:** 2026-10-16 12:36
 
 ## Regole di co-editing
 
@@ -439,8 +439,43 @@ mano a mano che le misure arrivano):
 - [2026-10-15] **Quota dalla faccia inferiore del carrello X al piano: 45 mm col metro, 46,7 nel CAD.** 1,7 mm di scarto, dentro l'errore di un metro a nastro: le due misure non si contraddicono. E la quota **non serve saperla con precisione**, perché l'aggiustamento è la penna che scorre nei morsetti — motivo per cui i morsetti non vanno usati come riferimento di quota, ma solo come serraggio. Il numero serve invece per l'altezza della piattaforma della carta, e conferma i 44 mm già previsti
 - [2026-10-15] **Pignone e cremagliera al posto del braccetto, per il sollevamento: il confronto.** A parità di raggio le due soluzioni hanno la stessa cinematica (corsa = r × angolo), quindi la scelta non è sul rapporto. Decide un altro numero: **il gioco di una coppia stampata, ~0,2 mm**. Su una catena rigida (~5 N/mm) vale **1 N di incertezza sulla forza di appoggio**, cinque volte la forza voluta — presa rigida e ingranaggi stampati sono incompatibili. Con una **molla morbida in serie (~0,05 N/mm)** lo stesso gioco costa **0,01 N**, e con essa diventa irrilevante anche la banda morta del servo (0,9°, che a r = 7,5 vale 0,131 mm, cioè 0,007 N). Conseguenza: la molla in serie non è un accessorio, è ciò che rende praticabile la strada scelta — e una volta che c'è, **il pignone si sceglie sullo spazio disponibile, non sul rapporto**
 - [2026-10-15] **Il vero punto debole del pignone non è il pignone: è la guida verticale.** L'attrito della slitta è in serie con la forza di appoggio, quindi 0,1 N di aderenza su 0,2 N voluti sono ±50% e isteresi (la penna preme diverso dopo un'alzata e dopo essere stata spinta su dalla carta). È l'unico punto in cui il parallelogramma del 2026-10-01 resta superiore, perché un perno su cuscinetti ha attrito molto minore di una slitta. Le due cose si possono combinare: parallelogramma o lamine flessibili per **guidare**, pignone e cremagliera per **muovere**
+- [2026-10-16] **L'utente sceglie cuscinetti MR63 per lo scorrimento del portapenna, e la scelta ribalta il gruppo molla.** L'attrito della guida passa da ~0,150 N (bussola stampata, μ 0,3 su 0,5 N di carico) a ~0,001 N (cuscinetto che rotola): due ordini di grandezza, e il punto debole segnalato il 2026-10-15 sparisce. Conseguenza non ovvia: **il peso proprio dello stadio flottante basta e avanza**. Un cannotto da 25 g pesa 0,25 N, cioè più dei 0,2 N che si volevano ottenere comprimendo una molla di 4 mm. Una molla che spinge in giù non serve — sommerebbe la sua forza al peso; semmai servirà **in tiro, per alleggerire**, o si toglie materiale dal cannotto
+- [2026-10-16] **Architettura a due stadi sulla stessa pista**, conseguenza della precedente. Stadio comandato: 2 cuscinetti, porta la cremagliera, la sua quota è l'angolo del servo. Stadio flottante: 4 cuscinetti in due coppie, porta i morsetti e la penna, appoggia per peso proprio. Fra i due un **giunto a gioco morto da 6 mm** (perno in asola) che impedisce alla quota imposta dal servo di arrivare alla punta. Con esso l'angolo di appoggio torna **non critico** e **il servo si può rilasciare a penna giù** — era l'unico vantaggio che la soluzione a gravità del 2026-10-01 aveva e che la presa rigida aveva perso. La decisione del 2026-10-15 regge quindi nella sostanza (il sollevamento è positivo e comandato), ma la forza d'appoggio torna al peso proprio
+- [2026-10-16] **L'interasse fra le due coppie di cuscinetti è la quota che decide la precisione.** Il gioco residuo arriva alla punta amplificato: `errore = gioco × (1 + h/s)`, con h = quanto la punta sta sotto la coppia inferiore e s = interasse. Con 0,05 di gioco e h = 40: s = 15 → 0,18 mm; s = 25 → 0,13; s = 40 → 0,10; s = 55 → 0,09. Non si azzera, si diluisce — conviene spendere in altezza ogni millimetro che l'inviluppo concede
+- [2026-10-16] **Due accorgimenti di stampa e montaggio per la pista:** precarico obbligatorio (un perno eccentrico per coppia, come sui carrelli), altrimenti il rotolamento non serve a niente perché il gioco va dritto alla punta; e righe di strato **nel verso dello scorrimento**, perché un cuscinetto da 6 mm che rotola perpendicolare agli strati li scavalca uno per uno
 
 ## Storico sessioni
+
+### [2026-10-16 12:36] (meccanica) Schema del modulo penna, e i cuscinetti che tolgono di mezzo la molla
+
+**Riepilogo:** disegnato lo schema di principio del modulo Tratto Pen, e riscritto il giorno dopo perché la scelta dell'utente di usare cuscinetti MR63 al posto di bussole striscianti ha spostato l'attrito della guida di due ordini di grandezza, rendendo inutile la molla che la prima versione aveva messo lì apposta per tollerarlo.
+
+**Cosa è stato fatto:**
+- **Consegnato `modulo-penna/schema.html`**, schema cinematico in due figure: la catena dal servo alla punta, e i tre stati del meccanismo. Dichiarato esplicitamente che è uno schema di principio e non un disegno di fabbricazione — le quote derivano dai conti, l'impacchettamento dentro l'inviluppo del carrello richiede il CAD, che è dell'utente
+- **Rifatto il giorno dopo in revisione 2**, con l'architettura a due stadi su pista comune e il giunto a gioco morto al posto della molla
+- Registrate le quote della staffa LL (550), della faccia posteriore del motore e dello scarto 45 / 46,7 mm fra metro e CAD
+
+**Decisioni prese:**
+
+1. **Scorrimento del portapenna su cuscinetti MR63, non su bussole striscianti.**
+   - Contesto: la revisione 1 dello schema segnalava la guida verticale come il pezzo critico del modulo, perché il suo attrito è l'unica cosa in serie con la forza di appoggio
+   - Decisione dell'utente: gli stessi cuscinetti usati sui carrelli
+   - Effetto: attrito da ~0,150 N (μ 0,3 su 0,5 N di carico) a ~0,001 N. Il punto critico sparisce
+   - **Conseguenza non prevista, che supera la scelta della molla fatta il 2026-10-15:** con l'attrito a un millesimo di newton il peso proprio basta a far scendere la penna, e un cannotto da 25 g pesa già 0,25 N — più dei 0,2 N che si volevano ottenere comprimendo una molla di 4 mm. Una molla che spinge in giù sommerebbe la sua forza al peso invece di darla. Se servirà, servirà **in tiro, per alleggerire**
+   - Da rivedere se: il tratto esce troppo marcato (togliere materiale dal cannotto o aggiungere una molla di richiamo) o troppo debole (zavorra)
+
+2. **Due stadi sulla stessa pista, uniti da un giunto a gioco morto da 6 mm.**
+   - Stadio comandato: 2 cuscinetti, porta la cremagliera, quota = angolo del servo. Stadio flottante: 4 cuscinetti in due coppie, porta morsetti e penna, appoggia per peso proprio
+   - La decisione del 2026-10-15 regge nella sostanza — il sollevamento resta positivo e comandato dal servo, che era il punto dell'utente — ma la **forza** d'appoggio torna al peso proprio, come nell'architettura del 2026-10-01
+   - Due vantaggi recuperati: l'angolo di appoggio torna **non critico**, e **il servo si può rilasciare a penna giù**, cosa che la presa rigida aveva perso
+
+**File consegnati/modificati:**
+- `modulo-penna/schema.html` — nuovo, poi riscritto in revisione 2
+- `documento-sessione-cnc-2d.md` — questa voce e le note dello Step 6
+
+**Impatto su Vision/Pipeline:** solo Step 6, che resta in corso con il CAD in mano all'utente.
+
+---
 
 ### [2026-10-15 19:20] (contenuti) Catalogo completo delle riprese raccolte e primo smistamento per episodio
 
