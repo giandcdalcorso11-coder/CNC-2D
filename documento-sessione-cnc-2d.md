@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 29
-**Ultimo aggiornamento:** 2026-10-17 10:40
+**Versione:** 30
+**Ultimo aggiornamento:** 2026-10-16 18:38
 
 ## Regole di co-editing
 
@@ -466,13 +466,66 @@ mano a mano che le misure arrivano):
 - [2026-10-16] **Perché 0,30 e non meno.** La posizione della cremagliera rispetto all'albero del servo è una catena che passa per la sporgenza stampata su `pz2`, la posizione dei cuscinetti e la sede del servo in `pz1`: realisticamente ±0,3 mm. E un errore di interasse cambia il gioco di `2·tan20° = 0,728` volte sé stesso. Con j nominale 0 il gioco reale va da −0,218 a +0,218, cioè **grippa metà delle volte**; con j = 0,30 va da +0,082 a +0,518 e non grippa mai. E qui il gioco **non costa niente**, perché il giunto a gioco morto rende la forza sulla carta indipendente dalla posizione del pignone: conviene esagerare
 - [2026-10-16] **Il gioco non si fa mai riducendo il modulo.** Mettere 1,48 invece di 1,50 cambia il passo, quindi i denti si disallineano progressivamente lungo la stecca e un ingranamento buono in mezzo si impunta alle estremità. Si fa sullo spessore del dente o sull'interasse
 - [2026-10-16] **Onshape: la feature Spur Gear ufficiale non ha un campo per il gioco** (verificato sul forum Onshape; alcune versioni custom l'hanno aggiunto spostando l'angolo dell'evolvente). È il motivo pratico per cui il gioco va messo nella cremagliera, che è uno sketch a mano e quindi sotto controllo. Parametri del pignone: teeth 20, module 1,5 mm (non diametral pitch), pressure angle 20°, depth 6, root fillet attivo, nessun bore. Tasca, alloggiamento del mozzo, foro di accesso Ø3 e fori M2 come feature separate sul corpo generato
-- [2026-10-17] **prova_3: pignone modellato e `pz2` alleggerito del 27%** (da 63,08 a 46,20 cm³). Zero interferenze fra 24 componenti. Pignone z25 confermato nel CAD: centro X −37,500, Ø esterno 40,41 × 40,48, spessore 10,009. Profondità portata a 10 perché l'incavo del braccetto è 7 e con 8 restava 1 mm solo di presa filetto per le M2; con 10 ne restano 3. **Ci sta, ma è il massimo**: sotto l'albero del servo (Z −52,800) e il fondo di `pz2` (Z −63,100) ci sono 10,30 mm, e il disco ne usa 10
-- [2026-10-17] **Corsa in discesa di `pz2`: 11,000 mm.** La limitano i cuscinetti inferiori (2 e 8) che arrivano in fondo alla pista; la scansione per collisione conferma il primo contatto a 11,1 mm, stesso evento. Fra prova_2 e prova_3 la pista si è accorciata di 5 mm sul lato basso (da Y −35,978 a −30,978) e la discesa è passata da 16,000 a 11,000: allungare la pista verso il basso è la leva se servisse più corsa. Salita 15,350, corsa totale **26,350**
-- [2026-10-17] **La cremagliera vuole 9 denti (42,412).** Con l'origine sulla faccia inferiore di `pz2` (Y −30,000): nella posizione modellata il pignone ingrana a 25,922 dal fondo della stecca, a fine discesa a 36,922, a fine salita a 10,572. Con un dente di presa oltre ciascun estremo servono denti da 5,860 a 41,634, cioè 8,84 passi. **8 denti (37,699) non bastano**
-- [2026-10-17] **Il servo non è il vincolo, e questo smonta il timore del montaggio.** A raggio 18,750 valgono 0,3272 mm per grado: l'intera corsa della guida (26,350) sta in **80,5° su ~180 disponibili**, e la corsa utile di 10 mm in 30,6°. Margine di montaggio **±49,7°, cioè ±16,3 mm**. Lo spline ha 21 denti, quindi le posizioni di montaggio sono quantizzate ogni 17,14° = 5,61 mm: con quel margine va bene qualunque dente entro ±2 posizioni da quella ideale
-- [2026-10-17] **Pignone grande o piccolo, per la forza del servo: non è un criterio.** Forza alla cremagliera = coppia / raggio. Con 1,8 kg·cm (≈177 N·mm) e r = 18,750 escono **9,4 N**; con r = 10,5 (z14) 16,9 N. Ma la massa flottante da sollevare è 0,55÷0,60 N, quindi il margine è **15×** già col pignone grande. Quello che il pignone grande compra davvero: la cremagliera cade sulla parete di `pz2` invece che su una mensola (meno massa flottante, che è il parametro fuori budget) ed è **1,8× più veloce** nell'alzata (0,051 s contro 0,091 per 10 mm), il che però conta poco contro il tempo di assestamento. Criterio vero: la geometria, non la coppia
+- [2026-10-16] **prova_3: pignone modellato e `pz2` alleggerito del 27%** (da 63,08 a 46,20 cm³). Zero interferenze fra 24 componenti. Pignone z25 confermato nel CAD: centro X −37,500, Ø esterno 40,41 × 40,48, spessore 10,009. Profondità portata a 10 perché l'incavo del braccetto è 7 e con 8 restava 1 mm solo di presa filetto per le M2; con 10 ne restano 3. **Ci sta, ma è il massimo**: sotto l'albero del servo (Z −52,800) e il fondo di `pz2` (Z −63,100) ci sono 10,30 mm, e il disco ne usa 10
+- [2026-10-16] **Corsa in discesa di `pz2`: 11,000 mm.** La limitano i cuscinetti inferiori (2 e 8) che arrivano in fondo alla pista; la scansione per collisione conferma il primo contatto a 11,1 mm, stesso evento. Fra prova_2 e prova_3 la pista si è accorciata di 5 mm sul lato basso (da Y −35,978 a −30,978) e la discesa è passata da 16,000 a 11,000: allungare la pista verso il basso è la leva se servisse più corsa. Salita 15,350, corsa totale **26,350**
+- [2026-10-16] **La cremagliera vuole 9 denti (42,412).** Con l'origine sulla faccia inferiore di `pz2` (Y −30,000): nella posizione modellata il pignone ingrana a 25,922 dal fondo della stecca, a fine discesa a 36,922, a fine salita a 10,572. Con un dente di presa oltre ciascun estremo servono denti da 5,860 a 41,634, cioè 8,84 passi. **8 denti (37,699) non bastano**
+- [2026-10-16] **Il servo non è il vincolo, e questo smonta il timore del montaggio.** A raggio 18,750 valgono 0,3272 mm per grado: l'intera corsa della guida (26,350) sta in **80,5° su ~180 disponibili**, e la corsa utile di 10 mm in 30,6°. Margine di montaggio **±49,7°, cioè ±16,3 mm**. Lo spline ha 21 denti, quindi le posizioni di montaggio sono quantizzate ogni 17,14° = 5,61 mm: con quel margine va bene qualunque dente entro ±2 posizioni da quella ideale
+- [2026-10-16] **Pignone grande o piccolo, per la forza del servo: non è un criterio.** Forza alla cremagliera = coppia / raggio. Con 1,8 kg·cm (≈177 N·mm) e r = 18,750 escono **9,4 N**; con r = 10,5 (z14) 16,9 N. Ma la massa flottante da sollevare è 0,55÷0,60 N, quindi il margine è **15×** già col pignone grande. Quello che il pignone grande compra davvero: la cremagliera cade sulla parete di `pz2` invece che su una mensola (meno massa flottante, che è il parametro fuori budget) ed è **1,8× più veloce** nell'alzata (0,051 s contro 0,091 per 10 mm), il che però conta poco contro il tempo di assestamento. Criterio vero: la geometria, non la coppia
 
 ## Storico sessioni
+
+### [2026-10-16 18:38] (meccanica) Dal primo CAD del modulo penna alla cremagliera quotata, passando per un errore mio sulle tolleranze
+
+**Riepilogo:** tre revisioni del CAD del modulo Tratto Pen analizzate con OCP una dopo l'altra, con il peso della parte flottante sceso del 27% e la geometria del pen-lift chiusa: pignone z25 sul braccetto del servo, cremagliera a 9 denti quotata e posizionata, e un gioco di ingranamento che nella prima versione del disegno avevo dimenticato del tutto.
+
+**Cosa è stato fatto:**
+- **Analizzate `prova_1`, `prova_2` e `prova_3`** con OCP: interferenze fra tutti i componenti, estrazione dei fori, distanze minime, scansione di collisione lungo la corsa. Tutte e tre pulite, zero interferenze — il contrario degli assiemi di settembre, dove le booleane ripescavano otto collisioni finte
+- **Consegnate tre schede di disegno**: lo schema di principio del modulo (due figure, i tre stati del meccanismo), la cremagliera e il pignone quotati, e il braccetto con l'ingranaggio
+- **Verificate le quote del braccetto SG90 su internet: non esistono.** Nessun produttore ne pubblica un disegno e le dimensioni cambiano fra i cloni; sul diametro esterno dello spline le fonti divergono di 0,3 mm. Da cui la scelta di fare quel disegno **parametrico su sei quote da rilevare col calibro**
+- **Calcolata la corsa che l'utente chiedeva:** `pz2` scende di 11,000 mm, fermato dai cuscinetti inferiori che arrivano in fondo alla pista. Da lì i 9 denti della cremagliera
+- **`pz2` alleggerito del 27%** dall'utente (63,08 → 46,20 cm³) dopo il bilancio di massa della sessione precedente
+
+**Bug: il profilo della cremagliera era a gioco zero**
+
+**Sintomo:** le quote del dente che avevo consegnato (semilarghezza 1,17810 alla primitiva) sono le quote teoriche di una coppia a contatto perfetto. Una coppia stampata con quelle quote non ingrana: si impunta.
+**Causa:** avevo dato il gioco su tutti gli accoppiamenti tranne quello che conta — tasca del braccetto A+0,4, mozzo C+0,2, stecca 1 mm per lato più larga del pignone, ma il profilo del dente nominale. L'ha intercettato l'utente chiedendo esplicitamente delle tolleranze, non me ne ero accorto.
+**Fix applicato:** gioco j = 0,30 mm scaricato tutto sulla cremagliera, semilarghezza alla primitiva da 1,17810 a **1,02810**. Il valore è giustificato: la catena di tolleranze sull'interasse vale ±0,3 e si trasferisce sul gioco moltiplicata per `2·tan20° = 0,728`, quindi a gioco nominale zero si grippa metà delle volte. Verificato sul disegno aggiornato, non ancora in stampa.
+
+**Decisioni prese:**
+
+1. **L'ingranaggio si attacca al braccetto in dotazione, non si stampa la scanalatura.**
+   - Contesto: proposta dell'utente, che preferiva non stampare uno spline con denti minuscoli
+   - Decisione: braccetto annegato in una tasca, centrato sul mozzo tondo e indicizzato sui bracci, fissato con due viti M2 nei fori che ha già
+   - Il numero che la rende obbligata: lo spline dell'SG90 è modulo 0,2, quindi i denti sporgono di **0,20 mm** sopra la primitiva — metà di una larghezza di estrusione. In PLA o non ingrana, o si spiana al primo carico
+   - Alternative scartate: stampare la scanalatura; incollare il braccetto di piatto senza tasca (nessun indice contro la rotazione, e nessun accesso alla vite del servo)
+   - Da rivedere se: si passa a un servo con spline più grosso
+
+2. **Pignone z25 invece di z20.** *Supera la raccomandazione data poche ore prima nella stessa sessione*, che era z20 per riusare il profilo degli assi.
+   - Contesto: noto che l'albero del servo è lungo Z e non lungo X, si è potuto calcolare dove cade la cremagliera in funzione del diametro
+   - Decisione: z25, Ø primitivo 37,5. Con questo diametro la linea primitiva cade a X −18,750 e il fondo della cremagliera a −16,875, cioè **0,375 fuori dalla parete di `pz2`**: i denti sono intagliati nel fianco invece che su una mensola
+   - Il motivo per cui supera la z20: il pignone sta sulla parte **fissa**, la cremagliera su quella **flottante**. La massa del disco è gratis, quella della mensola no. Il riuso del profilo z20 non valeva niente, perché la feature di Onshape lo genera comunque
+   - Alternative scartate: z14 e z20 (mensola da 11,95 e 7,45 mm); z28 (cremagliera a filo ma disco Ø45)
+   - Da rivedere se: cambia la posizione del servo
+
+3. **Doppia elica: no sul pen-lift, pur funzionando bene sugli assi.**
+   - Contesto: l'utente l'ha impostata a 40° per coerenza con X e Y
+   - Decisione dell'utente ancora da confermare; la raccomandazione è denti dritti
+   - Motivo: la doppia elica compra continuità di ingranamento, che sugli assi finisce nel tratto disegnato su 300 mm di corsa continua, mentre qui il giunto a gioco morto **scollega del tutto il movimento del pignone dalla punta**. In cambio introduce un vincolo assiale (a 40° uno sfalsamento `d` sposta il dente di 0,839·d, quindi si grippa oltre 0,358 mm con j = 0,30) su una catena che non ha nessuna battuta: quanto a fondo il braccetto va sullo spline, più due quote stampate
+   - Da rivedere se: si decide di farla comunque — in quel caso cremagliera elicoidale uguale, mano specchiata, e battuta assiale netta nella tasca del braccetto
+
+4. **La forza del servo non è un criterio nella scelta del diametro.**
+   - Contesto: domanda esplicita dell'utente
+   - Con 1,8 kg·cm e raggio 18,750 escono 9,4 N alla cremagliera, contro 0,55÷0,60 N di massa flottante da sollevare: **margine 15×** già col pignone grande. Quello che il diametro decide davvero è dove cade la cremagliera e, in second'ordine, la velocità di alzata (1,8× più veloce con z25 che con z14)
+
+**File consegnati/modificati:**
+- `modulo-penna/schema.html` — schema di principio, riscritto in revisione 2
+- `modulo-penna/cremagliera-e-pignone.html` — profilo, tolleranze, parametri Onshape, stecca finita quotata e posizionata
+- `modulo-penna/braccetto-e-ingranaggio.html` — nuovo, parametrico sulle sei quote da calibro
+- `documento-sessione-cnc-2d.md` — questa voce e le note dello Step 6
+
+**Impatto su Vision/Pipeline:** solo note dello Step 6, che resta in corso. Corretta inoltre in questa revisione una data sbagliata su cinque note dello Step 6, scritte come 2026-10-17 quando erano del 2026-10-16: avevo messo la data senza chiederla al sistema.
+
+---
 
 ### [2026-10-16 12:36] (meccanica) Schema del modulo penna, e i cuscinetti che tolgono di mezzo la molla
 
