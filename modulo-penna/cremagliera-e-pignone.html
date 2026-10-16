@@ -138,9 +138,11 @@
 <ol>
 <li>Traccia la <strong>linea primitiva</strong>. È il riferimento di tutto, e nel
 montaggio è la linea che deve stare a <code>raggio primitivo</code> dall'asse del servo.</li>
-<li>Segna la mezzeria del dente. A sinistra e a destra, sulla primitiva, <strong>1,17810</strong>.</li>
-<li>Sali di <strong>1,500</strong> (cresta): i due punti si stringono a <strong>0,63214</strong> per lato.</li>
-<li>Scendi di <strong>1,875</strong> (fondo): i due punti si allargano a <strong>1,86054</strong> per lato.</li>
+<li>Segna la mezzeria del dente. A sinistra e a destra, sulla primitiva,
+<strong>1,02810</strong> &mdash; che &egrave; il nominale 1,17810 <em>meno met&agrave; del gioco
+di ingranamento</em>. Vedi la sezione 2: questo &egrave; il numero da usare.</li>
+<li>Sali di <strong>1,500</strong> (cresta): i due punti si stringono a <strong>0,48214</strong> per lato.</li>
+<li>Scendi di <strong>1,875</strong> (fondo): i due punti si allargano a <strong>1,71055</strong> per lato.</li>
 <li>Unisci con rette, raccorda il fondo a 0,3÷0,4, e ripeti ogni <strong>4,71239</strong>.</li>
 </ol>
 
@@ -173,7 +175,97 @@ la stecca deve essere lunga almeno la corsa più la presa a entrambi gli estremi
 In larghezza: <strong>2 mm più del pignone</strong>, 1 per lato, così un piccolo
 disallineamento assiale non toglie contatto. Pignone da 6 → stecca da 8.</p>
 
-<h2>2. L'ingranaggio sul braccetto: sì, ed è la scelta giusta</h2>
+<h2>2. Le tolleranze: dove le avevo messe e dove no</h2>
+
+<div class="note">
+Risposta onesta alla domanda: <b>in parte.</b> Le quote di accoppiamento le
+avevo date con il gioco (la tasca del braccetto, l'alloggiamento del mozzo, la
+larghezza della stecca). Il <b>profilo del dente no</b>: quelle erano le quote
+teoriche a gioco zero. Una coppia stampata a gioco zero <b>non ingrana</b>.
+</div>
+
+<table>
+<tr><th>Accoppiamento</th><th>Gioco previsto</th><th>Stato</th></tr>
+<tr><td>Tasca dei bracci del braccetto</td><td class="n">A + 0,4</td><td>c'era</td></tr>
+<tr><td>Alloggiamento del mozzo</td><td class="n">C + 0,2</td><td>c'era</td></tr>
+<tr><td>Larghezza stecca contro pignone</td><td class="n">+1 per lato</td><td>c'era</td></tr>
+<tr><td>Fori dei perni dei cuscinetti</td><td class="n">Ø3,2 su Ø3</td><td>gi&agrave; nel tuo CAD</td></tr>
+<tr><td><strong>Ingranamento dente su dente</strong></td><td class="n"><strong>mancava</strong></td><td>&egrave; questa sezione</td></tr>
+</table>
+
+<h3>Perch&eacute; il gioco qui &egrave; gratis, e quindi conviene esagerare</h3>
+
+<p>La posizione della cremagliera rispetto all'albero del servo non &egrave; una
+quota sola: &egrave; una catena che passa per la sporgenza stampata su
+<code>pz2</code>, per la posizione dei cuscinetti, per la sede del servo in
+<code>pz1</code>. Una catena cos&igrave; sta realisticamente in <strong>&plusmn;0,3 mm</strong>.
+E un errore di interasse cambia il gioco di <code>2&middot;tan20&deg; = 0,728</code> volte
+s&eacute; stesso:</p>
+
+<table>
+<tr><th>Gioco nominale</th><th>Con catena &plusmn;0,3 il gioco reale va da</th><th>Esito</th></tr>
+<tr><td class="n">0,00</td><td class="n">&minus;0,218 a +0,218</td><td>grippa met&agrave; delle volte</td></tr>
+<tr><td class="k">0,30</td><td class="n">+0,082 a +0,518</td><td><strong>non grippa mai</strong></td></tr>
+</table>
+
+<p>E il bello &egrave; che in questo meccanismo il gioco <strong>non costa niente</strong>:
+il giunto a gioco morto e il peso proprio rendono la forza sulla carta
+indipendente dalla posizione del pignone. Un decimo di gioco in pi&ugrave; non si vede
+sul disegno. Un decimo in meno pu&ograve; bloccare il pen-lift.</p>
+
+<h3>Il numero, e dove metterlo</h3>
+
+<p><strong>Gioco di ingranamento j = 0,30 mm</strong>, tutto scaricato sulla
+<strong>cremagliera</strong> assottigliandone i denti di j sulla primitiva. Non sul
+pignone, per una ragione pratica: il pignone lo genera la feature di Onshape, che
+non ha un campo per il gioco; la cremagliera la disegni tu a mano e la controlli
+del tutto.</p>
+
+<table>
+<tr><th>Quota della cremagliera</th><th>Nominale</th><th class="k">Da usare (j = 0,30)</th></tr>
+<tr><td>Semilarghezza alla primitiva</td><td class="n">1,17810</td><td class="k">1,02810</td></tr>
+<tr><td>Semilarghezza alla cresta</td><td class="n">0,63214</td><td class="k">0,48214</td></tr>
+<tr><td>Semilarghezza al fondo</td><td class="n">1,86054</td><td class="k">1,71055</td></tr>
+<tr><td>Vano al fondo</td><td class="n">0,99131</td><td class="k">1,29131</td></tr>
+<tr><td>Raccordo al fondo, massimo</td><td class="n">0,496</td><td class="k">0,645</td></tr>
+<tr><td>Passo, addendum, dedendum</td><td class="n" colspan="2">invariati: 4,71239 &middot; 1,500 &middot; 1,875</td></tr>
+</table>
+
+<div class="note">
+<b>Quello che non va fatto mai:</b> ricavare il gioco riducendo il modulo, per
+esempio mettendo 1,48 invece di 1,50. Il modulo &egrave; il passo: cambiarlo
+disallinea progressivamente i denti lungo la stecca, e un ingranamento che va
+bene in mezzo si impunta alle estremit&agrave;. Il gioco si fa sullo <b>spessore del
+dente</b> o sull'<b>interasse</b>, mai sul passo.
+</div>
+
+<h2>3. I parametri da mettere in Onshape</h2>
+
+<p>Per il pignone usa la feature <strong>Spur Gear</strong> della libreria Onshape.
+Il profilo a evolvente lo genera lei, ed &egrave; la parte che non conviene disegnare
+a mano:</p>
+
+<table>
+<tr><th>Campo</th><th>Valore</th><th>Nota</th></tr>
+<tr><td>Number of teeth</td><td class="k">20</td><td>o quello che esce da <code>z &ge; (A+4)/1,5 + 2,5</code></td></tr>
+<tr><td>Module</td><td class="k">1,5 mm</td><td>verifica che sia <em>module</em> e non <em>diametral pitch</em></td></tr>
+<tr><td>Pressure angle</td><td class="k">20&deg;</td><td>stesso della cremagliera, obbligatorio</td></tr>
+<tr><td>Depth / thickness</td><td class="k">6 mm</td><td>contro gli 8 della stecca</td></tr>
+<tr><td>Root fillet</td><td class="k">attivo</td><td>&ldquo;full round&rdquo; va benissimo: meno concentrazione di sforzo al piede</td></tr>
+<tr><td>Center hole / bore</td><td class="k">nessuno</td><td>la tasca e il foro di accesso li fai dopo, come feature tue</td></tr>
+<tr><td>Backlash / offset</td><td class="k">0</td><td>la versione ufficiale non ce l'ha; il gioco sta nella cremagliera</td></tr>
+</table>
+
+<p>Poi, come feature separate sul corpo generato: la <strong>tasca del
+braccetto</strong>, l'<strong>alloggiamento del mozzo</strong>, il <strong>foro di accesso
+Ø3 passante</strong> e i due <strong>fori M2</strong> &mdash; quote nella scheda del braccetto.</p>
+
+<p>La cremagliera invece la fai a mano: uno <strong>sketch</strong> con il profilo della
+sezione 1 (valori con j = 0,30), un <strong>linear pattern</strong> a passo 4,71239
+&times; 6, ed estrusione da 8 mm. Non cercare una feature apposta: con i fianchi
+rettilinei lo sketch &egrave; pi&ugrave; veloce e ti lascia il controllo del gioco.</p>
+
+<h2>4. L'ingranaggio sul braccetto: sì, ed è la scelta giusta</h2>
 
 <div class="note">
 Stampare la scanalatura del servo è <b>la cosa da non fare</b>. Lo spline di un

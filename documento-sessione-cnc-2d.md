@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 27
-**Ultimo aggiornamento:** 2026-10-16 20:15
+**Versione:** 28
+**Ultimo aggiornamento:** 2026-10-16 21:05
 
 ## Regole di co-editing
 
@@ -462,6 +462,10 @@ mano a mano che le misure arrivano):
 - [2026-10-16] **Cremagliera del pen-lift quotata** in `modulo-penna/cremagliera-e-pignone.html`. Modulo 1,5, angolo di pressione 20°: fianchi **rettilinei** — l'evolvente sta tutta nel pignone — quindi bastano tre semilarghezze e due altezze. Semilarghezza 0,63214 alla cresta, 1,17810 alla primitiva, 1,86054 al fondo; addendum 1,500, dedendum 1,875, passo 4,71239. Vano al fondo 0,99131, quindi raccordo massimo 0,496 e consigliato 0,3÷0,4. **Sei denti (28,274) bastano** per i 10 mm di corsa con presa di un dente per lato; larghezza della stecca 2 mm più del pignone, 1 per lato
 - [2026-10-16] **Le quote del braccetto non sono standardizzate, e lo spline è incerto di 0,3 mm.** Cercate: nessun produttore pubblica un disegno quotato del braccetto a croce dell'SG90, e le dimensioni cambiano fra i cloni. Sul diametro esterno dello spline le fonti danno 4,6 / 4,8 / 4,9 — per un accoppiamento a contatto è una divergenza inaccettabile. Concorde invece il numero di denti, 21, da cui si deduce il modulo 0,2 (primitivo Ø4,2, esterno Ø4,6). Conseguenza di metodo: il disegno del braccetto è stato fatto **parametrico su sei quote da rilevare col calibro** (`modulo-penna/braccetto-e-ingranaggio.html`), non su valori presi da internet
 - [2026-10-16] **Il numero di denti del pignone lo decide la campata dei bracci corti:** `z ≥ (A + 4) / 1,5 + 2,5`, dove A è la campata dopo aver tagliato i due bracci lunghi. Sotto A = 22 il pignone resta lo **z20 già in uso sugli assi**. E il centraggio dell'ingranaggio va fatto **sull'alloggiamento del mozzo** (tornito concentrico allo spline) con 0,2 di gioco, mentre la tasca dei bracci ha 0,4 di gioco e non centra niente: centrare sui bracci importerebbe nell'ingranaggio l'eccentricità dello stampo del braccetto
+- [2026-10-16] **MIO ERRORE, segnalato dall'utente: il profilo della cremagliera gliel'avevo dato a gioco zero.** Le quote di accoppiamento avevano il loro gioco (tasca del braccetto A+0,4, mozzo C+0,2, stecca 1 mm per lato più larga del pignone), ma il profilo del dente erano le quote teoriche. **Una coppia stampata a gioco zero non ingrana.** Corretto: gioco di ingranamento **j = 0,30 mm**, scaricato tutto sulla cremagliera assottigliandone i denti sulla primitiva — semilarghezza da 1,17810 a **1,02810**, cresta 0,48214, fondo 1,71055, vano al fondo 1,29131 (che in cambio permette un raccordo fino a 0,645)
+- [2026-10-16] **Perché 0,30 e non meno.** La posizione della cremagliera rispetto all'albero del servo è una catena che passa per la sporgenza stampata su `pz2`, la posizione dei cuscinetti e la sede del servo in `pz1`: realisticamente ±0,3 mm. E un errore di interasse cambia il gioco di `2·tan20° = 0,728` volte sé stesso. Con j nominale 0 il gioco reale va da −0,218 a +0,218, cioè **grippa metà delle volte**; con j = 0,30 va da +0,082 a +0,518 e non grippa mai. E qui il gioco **non costa niente**, perché il giunto a gioco morto rende la forza sulla carta indipendente dalla posizione del pignone: conviene esagerare
+- [2026-10-16] **Il gioco non si fa mai riducendo il modulo.** Mettere 1,48 invece di 1,50 cambia il passo, quindi i denti si disallineano progressivamente lungo la stecca e un ingranamento buono in mezzo si impunta alle estremità. Si fa sullo spessore del dente o sull'interasse
+- [2026-10-16] **Onshape: la feature Spur Gear ufficiale non ha un campo per il gioco** (verificato sul forum Onshape; alcune versioni custom l'hanno aggiunto spostando l'angolo dell'evolvente). È il motivo pratico per cui il gioco va messo nella cremagliera, che è uno sketch a mano e quindi sotto controllo. Parametri del pignone: teeth 20, module 1,5 mm (non diametral pitch), pressure angle 20°, depth 6, root fillet attivo, nessun bore. Tasca, alloggiamento del mozzo, foro di accesso Ø3 e fori M2 come feature separate sul corpo generato
 
 ## Storico sessioni
 
