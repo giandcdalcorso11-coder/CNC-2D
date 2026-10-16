@@ -11,13 +11,12 @@ Richiede: pip install faster-whisper
 I file audio vengono rinominati sul posto (non spostati, non duplicati), con
 un numero progressivo a 3 cifre davanti (es. 006-oggi-monto-il-carrello.mp4)
 per mantenere l'ordine cronologico anche se i nomi, in ordine alfabetico,
-si mischierebbero. Il numero è tenuto in 000-contatore.txt, nella stessa
-cartella: continua a salire anche se sposti o archivi altrove i file già
-rinominati (es. in una sottocartella per episodio finito), perché non viene
-ricalcolato scansionando i nomi presenti ma letto da quel file. La primissima
-volta, se 000-contatore.txt non esiste ancora, parte da (il più alto numero
-NNN- già presente nella cartella + 1) — utile se hai già rinominato a mano
-dei file con quello schema.
+si mischierebbero. Il numero successivo si ricava dal più alto già scritto
+in 000-elaborati.json (lo storico delle rinomine già fatte dallo script) o,
+se più alto, da quello già presente nella cartella — così continua a
+salire anche se sposti o archivi altrove i file già rinominati (es. in una
+sottocartella per episodio finito), senza bisogno di un file contatore a
+parte.
 
 Per ognuno viene creato un file .txt con la trascrizione integrale.
 Lo storico delle rinomine (nome originale -> nuovo nome, data/ora) resta in
@@ -34,7 +33,6 @@ from pathlib import Path
 AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".opus", ".flac", ".caf", ".mp4"}
 LOG_NAME = "000-log-trascrizioni.csv"
 PROCESSED_NAME = "000-elaborati.json"
-COUNTER_NAME = "000-contatore.txt"
 MAX_WORDS = 10
 MAX_LEN = 60
 NUM_DIGITS = 3
@@ -57,15 +55,17 @@ def highest_number_in_folder(src_dir):
     return max_n
 
 
-def read_counter(src_dir):
-    counter_path = src_dir / COUNTER_NAME
-    if counter_path.exists():
-        return int(counter_path.read_text().strip())
-    return highest_number_in_folder(src_dir) + 1
+def highest_number_in_history(processed):
+    max_n = 0
+    for entry in processed.values():
+        m = NUM_PATTERN.match(entry.get("rinominato_in", ""))
+        if m:
+            max_n = max(max_n, int(m.group(1)))
+    return max_n
 
 
-def write_counter(src_dir, value):
-    (src_dir / COUNTER_NAME).write_text(str(value), encoding="utf-8")
+def next_number(src_dir, processed):
+    return max(highest_number_in_folder(src_dir), highest_number_in_history(processed)) + 1
 
 
 def load_model():
@@ -118,8 +118,7 @@ def main():
     def scan_once():
         changed = False
         already_renamed = {entry["rinominato_in"] for entry in processed.values()}
-        counter = read_counter(src_dir)
-        counter_start = counter
+        counter = next_number(src_dir, processed)
         for f in sorted(src_dir.iterdir()):
             if (
                 f.is_file()
@@ -142,8 +141,6 @@ def main():
             processed_path.write_text(
                 json.dumps(processed, ensure_ascii=False, indent=2), encoding="utf-8"
             )
-        if counter != counter_start:
-            write_counter(src_dir, counter)
 
     scan_once()
 

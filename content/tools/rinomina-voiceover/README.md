@@ -44,19 +44,19 @@ python 000-rinomina_voiceover.py . --watch    rem resta in ascolto come il .bat
 
 Il nome del file testuale non segue l'ordine di registrazione, quindi lo
 script antepone un **numero progressivo a 3 cifre** (es.
-`006-oggi-montiamo-il-carrello-y.mp4`). Il numero è tenuto in
-`000-contatore.txt`, nella cartella: **continua a salire anche se sposti o
-archivi altrove i file già rinominati** (es. in una sottocartella per un
-episodio finito), perché non viene ricalcolato guardando cosa resta nella
-cartella, ma letto da quel file.
+`006-oggi-montiamo-il-carrello-y.mp4`). Il numero successivo lo ricava dal
+più alto già scritto in `000-elaborati.json` (lo storico di tutte le
+rinomine fatte finora) — **continua a salire anche se sposti o archivi
+altrove i file già rinominati** (es. in una sottocartella per un episodio
+finito), perché non dipende da cosa resta fisicamente nella cartella.
 
-**Non cancellare `000-contatore.txt` né `000-elaborati.json`** tra una
-sessione e l'altra: sono la memoria dello script. Se li cancelli, la prima
-volta riparte scansionando la cartella (vedi sotto) e può rinominare di
-nuovo file già fatti.
+**Non cancellare `000-elaborati.json`** tra una sessione e l'altra: è la
+memoria dello script. Se lo cancelli, la volta dopo riparte scansionando
+solo quello che trova nella cartella in quel momento (vedi sotto) e può
+sbagliare la numerazione se nel frattempo hai spostato via dei file.
 
 Se rinomini a mano i primi file (come nel caso di averne già 5) **prima
-ancora che `000-contatore.txt` esista**, usa lo stesso schema — `NNN-`
+ancora che esista `000-elaborati.json`**, usa lo stesso schema — `NNN-`
 davanti, il resto come preferisci — es.:
 ```
 001-idea-del-progetto.mp4
@@ -65,9 +65,10 @@ davanti, il resto come preferisci — es.:
 004-ota.mp4
 005-dashboard-log.mp4
 ```
-Alla prima run, non trovando ancora `000-contatore.txt`, lo script scansiona
-la cartella, vede `005` come numero più alto, crea il contatore a `6` e da
-lì in poi lo usa sempre lui, indipendentemente da cosa sposti o archivi.
+Alla prima run, lo script guarda sia lo storico sia la cartella, vede `005`
+come numero più alto e il prossimo file nuovo diventa `006-...`; da lì in
+poi lo storico in `000-elaborati.json` tiene il conto anche per i file che
+sposti altrove.
 
 ## Cosa produce
 
@@ -81,7 +82,6 @@ copiati altrove. Per ognuno trovi anche:
   due volte lo stesso file
 - `000-log-trascrizioni.csv`, lo stesso storico in formato apribile con
   Excel, con in più il testo trascritto per ogni voce
-- `000-contatore.txt`, il prossimo numero da usare
 
 ## Organizzare i voice over finiti in sottocartelle
 
@@ -89,8 +89,8 @@ Lo script guarda solo il livello principale della cartella che gli indichi,
 non entra nelle sottocartelle. Quindi puoi tranquillamente creare una
 sottocartella tipo `episodio-1/` e spostarci dentro i voice over già
 rinominati e sistemati: lo script li ignora da quel momento in poi (non li
-ritocca) e, grazie al contatore persistente, continua a numerare i nuovi
-file da dove era arrivato.
+ritocca) e, grazie allo storico in `000-elaborati.json`, continua a
+numerare i nuovi file da dove era arrivato.
 
 ## Limiti da sapere
 
