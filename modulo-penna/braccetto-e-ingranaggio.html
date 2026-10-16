@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Braccetto e ingranaggio</title>
+<style>
+  :root{ --bg:#fbfaf8; --fg:#1c1b19; --muted:#6b6862; --rule:#d8d4cd;
+         --accent:#c2410c; --panel:#f2efe9; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#17161a; --fg:#eceae6; --muted:#9a958d;
+      --rule:#363339; --accent:#fb923c; --panel:#201e24; } }
+  :root[data-theme="dark"]{ --bg:#17161a; --fg:#eceae6; --muted:#9a958d;
+      --rule:#363339; --accent:#fb923c; --panel:#201e24; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;}
+  .wrap{max-width:880px;margin:0 auto;padding:40px 16px 80px;}
+  h1{font-size:1.6rem;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 30px;font-size:.95rem}
+  h2{font-size:1.15rem;margin:44px 0 4px;letter-spacing:-.01em}
+  figure{margin:18px 0 10px;} svg{width:100%;height:auto;display:block}
+  figcaption{color:var(--muted);font-size:.88rem;margin-top:10px;
+             border-left:2px solid var(--rule);padding:6px 0 6px 12px}
+  table{border-collapse:collapse;width:100%;font-size:.9rem;margin:16px 0}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-weight:600;color:var(--muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.k{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .note{background:var(--panel);border-radius:8px;padding:14px 16px;margin:18px 0;font-size:.93rem}
+  .note b{color:var(--accent)}
+  p{margin:12px 0} ul{margin:12px 0;padding-left:22px} li{margin:7px 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;
+       background:var(--panel);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Braccetto e ingranaggio</h1>
+<p class="sub">GDC CNC 2D · Step 6 · disegno parametrico sulle misure del braccetto che hai in mano</p>
+
+<div class="note">
+Ho cercato le quote: <b>non esistono.</b> Nessun produttore pubblica un disegno
+quotato del braccetto a croce dell'SG90, e le dimensioni cambiano fra i cloni.
+Sullo spline le fonti divergono di <b>0,3 mm</b> sul diametro esterno. Per un
+accoppiamento a contatto 0,3 mm è tantissimo, quindi questo disegno è
+<b>parametrico</b>: tu prendi sei quote col calibro, io ti do le formule che le
+consumano. Così vale per il braccetto che hai, non per quello medio di internet.
+</div>
+
+<h2>1. Le sei quote da prendere</h2>
+
+<figure>
+<svg viewBox="0 0 760 500" role="img"
+     aria-label="Vista in pianta e di fianco del braccetto a croce del servo, con sei quote lettera da A a F da rilevare col calibro">
+  <defs>
+    <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+    <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  </defs>
+
+  <!-- ===== pianta ===== -->
+  <text x="262" y="28" font-size="13" fill="currentColor" text-anchor="middle" font-weight="600">pianta</text>
+  <!-- bracci lunghi (verticali) -->
+  <rect x="240" y="58" width="44" height="364" rx="22" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <!-- bracci corti (orizzontali) -->
+  <rect x="162" y="218" width="200" height="44" rx="22" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <!-- mozzo -->
+  <circle cx="262" cy="240" r="40" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <circle cx="262" cy="240" r="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 3"/>
+  <text x="300" y="206" font-size="11.5" fill="currentColor">spline 21 denti</text>
+
+  <!-- fori -->
+  <g fill="none" stroke="currentColor" stroke-width="1.6">
+    <circle cx="262" cy="190" r="7"/><circle cx="262" cy="155" r="7"/>
+    <circle cx="262" cy="120" r="7"/><circle cx="262" cy="85"  r="7"/>
+    <circle cx="262" cy="290" r="7"/><circle cx="262" cy="325" r="7"/>
+    <circle cx="262" cy="360" r="7"/><circle cx="262" cy="395" r="7"/>
+    <circle cx="184" cy="240" r="7"/><circle cx="340" cy="240" r="7"/>
+  </g>
+
+  <!-- A: campata bracci corti -->
+  <g stroke="#c2410c" stroke-width="1.3">
+    <line x1="162" y1="452" x2="362" y2="452" marker-start="url(#b1)" marker-end="url(#b1)"/>
+    <line x1="162" y1="266" x2="162" y2="458" stroke-width=".9" opacity=".55"/>
+    <line x1="362" y1="266" x2="362" y2="458" stroke-width=".9" opacity=".55"/>
+  </g>
+  <text x="262" y="474" font-size="13" fill="#c2410c" text-anchor="middle" font-weight="700">A — campata bracci corti</text>
+
+  <!-- B: campata bracci lunghi -->
+  <g stroke="currentColor" stroke-width="1.3">
+    <line x1="118" y1="58" x2="118" y2="422" marker-start="url(#b2)" marker-end="url(#b2)"/>
+    <line x1="112" y1="58" x2="236" y2="58" stroke-width=".9" opacity=".55"/>
+    <line x1="112" y1="422" x2="236" y2="422" stroke-width=".9" opacity=".55"/>
+  </g>
+  <text x="108" y="244" font-size="13" fill="currentColor" text-anchor="end" font-weight="700">B</text>
+  <text x="108" y="260" font-size="11" fill="currentColor" text-anchor="end">bracci lunghi</text>
+
+  <!-- C: mozzo -->
+  <line x1="302" y1="240" x2="392" y2="240" stroke="#c2410c" stroke-width="1.3" marker-start="url(#b1)"/>
+  <text x="398" y="244" font-size="13" fill="#c2410c" font-weight="700">C — Ø mozzo</text>
+
+  <!-- F: interasse fori -->
+  <g stroke="#c2410c" stroke-width="1.3">
+    <line x1="420" y1="120" x2="420" y2="155" marker-start="url(#b1)" marker-end="url(#b1)"/>
+    <line x1="272" y1="120" x2="426" y2="120" stroke-width=".9" opacity=".5"/>
+    <line x1="272" y1="155" x2="426" y2="155" stroke-width=".9" opacity=".5"/>
+  </g>
+  <text x="434" y="134" font-size="13" fill="#c2410c" font-weight="700">F — passo fori</text>
+  <text x="434" y="150" font-size="11" fill="#c2410c">G — Ø foro</text>
+
+  <!-- ===== vista di fianco ===== -->
+  <text x="620" y="28" font-size="13" fill="currentColor" text-anchor="middle" font-weight="600">di fianco</text>
+  <rect x="520" y="230" width="200" height="16" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <rect x="588" y="246" width="64" height="40" fill="none" stroke="currentColor" stroke-width="2.2"/>
+  <text x="730" y="242" font-size="11.5" fill="currentColor">disco</text>
+  <text x="662" y="276" font-size="11.5" fill="currentColor">mozzo</text>
+
+  <g stroke="#c2410c" stroke-width="1.3">
+    <line x1="500" y1="230" x2="500" y2="246" marker-start="url(#b1)" marker-end="url(#b1)"/>
+    <line x1="560" y1="246" x2="560" y2="286" marker-start="url(#b1)" marker-end="url(#b1)"/>
+  </g>
+  <text x="492" y="242" font-size="13" fill="#c2410c" text-anchor="end" font-weight="700">D</text>
+  <text x="552" y="272" font-size="13" fill="#c2410c" text-anchor="end" font-weight="700">E</text>
+  <text x="500" y="320" font-size="11.5" fill="currentColor">D = spessore del disco</text>
+  <text x="500" y="336" font-size="11.5" fill="currentColor">E = sporgenza del mozzo</text>
+  <text x="500" y="364" font-size="11.5" fill="currentColor" opacity=".75">Il mozzo sta dalla parte del</text>
+  <text x="500" y="380" font-size="11.5" fill="currentColor" opacity=".75">servo: l'ingranaggio va</text>
+  <text x="500" y="396" font-size="11.5" fill="currentColor" opacity=".75">dall'altra.</text>
+</svg>
+<figcaption>
+  Sei quote e un calibro. <strong>A</strong> è quella che decide tutto il resto,
+  perché è la campata che deve stare dentro la tasca dopo aver tagliato i bracci
+  lunghi. <strong>C</strong> è il riferimento di centraggio: il mozzo è tornito
+  concentrico allo spline, i bracci no necessariamente.
+</figcaption>
+</figure>
+
+<h2>2. L'ingranaggio, quotato su quelle lettere</h2>
+
+<figure>
+<svg viewBox="0 0 760 440" role="img"
+     aria-label="Pianta dell'ingranaggio con la tasca sagomata che accoglie il braccetto tagliato a due bracci, il foro di accesso centrale e due fori M2">
+  <defs>
+    <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+  </defs>
+  <!-- corpo ingranaggio -->
+  <circle cx="250" cy="220" r="170" fill="none" stroke="currentColor" stroke-width="2.6"/>
+  <circle cx="250" cy="220" r="155" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="9 5" opacity=".6"/>
+  <!-- denti schematici -->
+  <g stroke="currentColor" stroke-width="2">
+    <path d="M250,50 l0,-16 M420,220 l16,0 M250,390 l0,16 M80,220 l-16,0"/>
+    <path d="M370,100 l11,-11 M370,340 l11,11 M130,340 l-11,11 M130,100 l-11,-11"/>
+  </g>
+  <text x="250" y="30" font-size="11.5" fill="currentColor" text-anchor="middle">denti m 1,5</text>
+  <text x="458" y="224" font-size="11.5" fill="currentColor">Ø primitivo tratteggiato</text>
+
+  <!-- tasca: braccetto tagliato a due bracci -->
+  <rect x="130" y="196" width="240" height="48" rx="24" fill="none" stroke="#c2410c" stroke-width="2.4"/>
+  <circle cx="250" cy="220" r="44" fill="none" stroke="#c2410c" stroke-width="2.4"/>
+  <text x="250" y="168" font-size="12" fill="#c2410c" text-anchor="middle">tasca = A + 0,4</text>
+
+  <!-- alloggiamento mozzo + foro di accesso -->
+  <circle cx="250" cy="220" r="26" fill="none" stroke="#c2410c" stroke-width="1.8" stroke-dasharray="6 3"/>
+  <circle cx="250" cy="220" r="14" fill="none" stroke="#c2410c" stroke-width="2.4"/>
+  <line x1="264" y1="220" x2="340" y2="286" stroke="#c2410c" stroke-width="1.1"/>
+  <text x="346" y="292" font-size="12" fill="#c2410c">foro di accesso Ø3</text>
+  <text x="346" y="308" font-size="12" fill="#c2410c">alla vite del servo</text>
+
+  <!-- fori M2 -->
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="190" cy="220" r="9"/><circle cx="310" cy="220" r="9"/>
+  </g>
+  <g stroke="#c2410c" stroke-width="1.3">
+    <line x1="190" y1="378" x2="310" y2="378" marker-start="url(#c1)" marker-end="url(#c1)"/>
+    <line x1="190" y1="232" x2="190" y2="384" stroke-width=".8" opacity=".5"/>
+    <line x1="310" y1="232" x2="310" y2="384" stroke-width=".8" opacity=".5"/>
+  </g>
+  <text x="250" y="400" font-size="12" fill="#c2410c" text-anchor="middle">viti M2 a passo F (o 2F)</text>
+
+  <text x="470" y="60" font-size="12.5" fill="currentColor" font-weight="600">Taglia i due bracci lunghi</text>
+  <text x="470" y="78" font-size="12" fill="currentColor" opacity=".8">a filo del mozzo. Restano i due</text>
+  <text x="470" y="94" font-size="12" fill="currentColor" opacity=".8">corti, campata A, che fanno da</text>
+  <text x="470" y="110" font-size="12" fill="currentColor" opacity=".8">chiavetta contro la rotazione.</text>
+  <text x="470" y="140" font-size="12" fill="currentColor" opacity=".8">Due bracci bastano: la coppia</text>
+  <text x="470" y="156" font-size="12" fill="currentColor" opacity=".8">e' ~2 N&#183;mm, cioe' 0,2 N su un</text>
+  <text x="470" y="172" font-size="12" fill="currentColor" opacity=".8">braccio da 10 mm.</text>
+  <text x="470" y="202" font-size="12.5" fill="currentColor" font-weight="600">Centra sul mozzo, non sui bracci</text>
+  <text x="470" y="220" font-size="12" fill="currentColor" opacity=".8">L'alloggiamento Ø C + 0,5 e' il</text>
+  <text x="470" y="236" font-size="12" fill="currentColor" opacity=".8">riferimento; la tasca dei bracci</text>
+  <text x="470" y="252" font-size="12" fill="currentColor" opacity=".8">ha gioco e non centra niente.</text>
+</svg>
+<figcaption>
+  La tasca per i bracci ha gioco di proposito: a centrare l'ingranaggio è
+  l'alloggiamento del mozzo, che è tornito concentrico allo spline. Se centri sui
+  bracci, importi nell'ingranaggio l'eccentricità dello stampo del braccetto.
+</figcaption>
+</figure>
+
+<h2>3. Le formule</h2>
+
+<table>
+<tr><th>Elemento dell'ingranaggio</th><th>Quota</th><th>Perché</th></tr>
+<tr><td>Tasca dei bracci, campata</td><td class="k">A + 0,4</td><td>0,2 di gioco per lato: non deve centrare</td></tr>
+<tr><td>Tasca dei bracci, larghezza</td><td class="k">larghezza braccio + 0,4</td><td>idem</td></tr>
+<tr><td>Tasca dei bracci, profondità</td><td class="k">D + 0,2</td><td>il disco deve appoggiare di faccia, non sul fondo</td></tr>
+<tr><td>Alloggiamento del mozzo</td><td class="k">Ø C + 0,2 · prof. E + 0,5</td><td>questo è il centraggio: gioco minimo</td></tr>
+<tr><td>Foro di accesso</td><td class="k">Ø 3,0 passante</td><td>per arrivare alla vite del servo dopo il montaggio</td></tr>
+<tr><td>Fori per le viti M2</td><td class="k">Ø 1,7 a distanza F dal centro</td><td>nei fori che il braccetto ha già</td></tr>
+<tr><td>Larghezza del pignone</td><td class="k">6,0</td><td>contro gli 8,0 della cremagliera</td></tr>
+<tr><td>Spalla sotto i denti</td><td class="k">≥ 2,0</td><td>da cui il vincolo sul numero di denti</td></tr>
+</table>
+
+<div class="note">
+<b>Il numero di denti lo decide A:</b> &nbsp;<code>z ≥ (A + 4) / 1,5 + 2,5</code>
+<br><br>
+A = 18 → z ≥ 17,2 → <b>z 20</b> &nbsp;·&nbsp; A = 20 → z ≥ 18,5 → <b>z 20</b>
+&nbsp;·&nbsp; A = 22 → z ≥ 19,8 → <b>z 20</b> (al pelo) &nbsp;·&nbsp;
+A = 24 → z ≥ 21,2 → <b>z 24</b>
+<br><br>
+Se A sta sotto i 22, il pignone è lo <b>z 20 che stampi già per gli assi</b>:
+stesso profilo, stessa stampa, ingranamento già collaudato.
+</div>
+
+<h2>4. Lo spline, per curiosità e per verifica</h2>
+
+<p>Non ti serve modellarlo — è tutto il senso di usare il braccetto — ma se vuoi
+controllare di avere quello che credi:</p>
+
+<table>
+<tr><th>Grandezza</th><th>Valore</th><th>Affidabilità</th></tr>
+<tr><td>Numero di denti</td><td class="n">21</td><td>concorde su tutte le fonti</td></tr>
+<tr><td>Modulo</td><td class="n">≈ 0,2</td><td>dedotto, coerente con Ø4,2 primitivo e Ø4,6 esterno</td></tr>
+<tr><td>Ø esterno</td><td class="n">4,6 ÷ 4,9</td><td><strong>le fonti divergono di 0,3</strong> — misura il tuo</td></tr>
+<tr><td>Vite di ritegno</td><td class="n">Ø 2,5 autofilettante</td><td>dato riportato per MG90S, probabile anche su SG90</td></tr>
+<tr><td>Altezza del dente sopra la primitiva</td><td class="n">≈ 0,20</td><td>addendum = 1 × modulo</td></tr>
+</table>
+
+<p>Quell'ultima riga è il motivo per cui non si stampa: <strong>0,20 mm di dente
+sporgente</strong>, metà di una larghezza di estrusione. (Ti avevo detto «circa
+0,3»: la cifra giusta, calcolata sul modulo 0,2, è 0,20 di addendum e 0,45 di
+altezza totale. L'argomento non cambia, peggiora.)</p>
+
+<h2>5. In che ordine montare</h2>
+<ul>
+<li><strong>Taglia</strong> i due bracci lunghi a filo del mozzo, e pareggia con l'utensile rotativo.</li>
+<li><strong>Misura</strong> A dopo il taglio, non prima: è la quota che entra nella tasca.</li>
+<li><strong>Prova a secco</strong> il braccetto nella tasca prima di avvitare: deve entrare senza forzare e appoggiare di faccia.</li>
+<li><strong>Monta il braccetto sull'albero</strong> con la sua vite, e solo dopo infila l'ingranaggio e avvita le M2. Al contrario non arrivi più alla vite centrale — a meno che tu non abbia fatto il foro di accesso, che è esattamente il motivo per cui c'è.</li>
+<li><strong>Verifica la concentricità</strong> facendo girare il servo a mano: la cresta dei denti non deve oscillare visibilmente. Se oscilla, il centraggio è finito sui bracci invece che sul mozzo.</li>
+</ul>
+
+</div>
+</body>
+</html>
