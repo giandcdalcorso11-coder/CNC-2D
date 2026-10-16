@@ -1,7 +1,7 @@
 # Documento di Sessione — CNC 2D Plotter
 
-**Versione:** 24
-**Ultimo aggiornamento:** 2026-10-16 16:40
+**Versione:** 25
+**Ultimo aggiornamento:** 2026-10-16 18:05
 
 ## Regole di co-editing
 
@@ -402,7 +402,7 @@ mano a mano che le misure arrivano):
 - **Due passi/mm, uno per asse.** Le due cremagliere si sono ritirate di quantità diverse: un valore solo fa uscire i quadrati rettangoli. Da misurare per asse e da separare nel firmware della dashboard, che oggi ne ha uno globale
 - ~~La quota a cui è stata tagliata la staffa LL non è registrata~~ — **chiuso il 2026-10-15: 550 mm**, la quota di progetto, senza scarti. Dalla stecca da 1002 restano 452 mm di avanzo
 - **Il config di FluidNC non è mai stato provato** sulla macchina montata. Contiene ancora `steps_per_mm: 80.000` (residuo dell'ipotesi a cinghia: sbaglia di 2,36 volte), nessun blocco `homing:`, e i due assi sono stati rinominati il 2026-10-15 senza poterli verificare
-- **Il reticolo dei fori motore del carrello è 31,0000 × 31,4500 invece di 31 quadrato**, ed è stato ereditato dal modulo penna (verificato il 2026-10-16 su entrambi i pezzi nello stesso file). Va corretto alla sorgente, altrimenti ogni pezzo nuovo che si attacca a un motore nasce con lo stesso scarto di 0,450 e senza margine di registrazione
+- ~~Il reticolo dei fori motore è 31,0000 × 31,4500 invece di 31 quadrato~~ — **chiuso dall'utente il 2026-10-16: non è un errore, è una quota del progetto.** Ha stampato e avvitato con questo reticolo più volte e le viti entrano sempre, perché il gioco Ø4 su M3 vale 0,500 e lo scarto 0,450. E siccome *tutti* i pezzi del progetto portano lo stesso scarto, sono coerenti fra loro. Resta vero solo che la registrazione con le viti è esaurita, quindi l'offset utensile andrà misurato e non registrato — cosa che comunque va fatta
 - **Aggiornare il carrello X nell'assieme CAD con la versione stampata.** Finché c'è quello vecchio, ogni controllo di interferenza ripesca le stesse otto collisioni finte degli MR63 — e una vera ci si nasconde dentro
 - ~~Le due rotaie nell'assieme sono sfalsate di 31,252 mm in Y, e costano 22,9 mm di corsa~~ — **risolto in montaggio il 2026-10-15.** L'utente ha allineato le rotaie sulla macchina vera, quindi i 22,9 mm sono recuperati. Resta da riportare l'allineamento **nell'assieme CAD**, altrimenti ogni quota che se ne ricava è sbagliata di 31 mm
 - **Il margine del carrello Y a fine corsa è 11,5 mm a destra e 9,8 a sinistra** con la cremagliera X v5, contro i 3,5 e 1,7 di prima. È accettabile, ma è il numero da ricontrollare quando il modulo penna aggiungerà materiale sul lato basso del carrello: la fascia critica è **Z 46,7÷59**
@@ -452,6 +452,11 @@ mano a mano che le misure arrivano):
 - [2026-10-16] **Il morsetto, come modellato, non tocca la penna** — ed è giusto, è disegnato aperto. Ma le distanze dicono due cose: la sede in `pz2` è una **parete piana** a 0,500 dalla penna (nessuna faccia cilindrica con asse penna in `pz2`), e l'attacco è un arco Ø12 su una penna Ø10, a 1,000. A morsetti stretti **l'asse della penna si sposta fino a 0,5 mm** rispetto al modello, e il contatto avviene sui due spigoli dell'arco. Una sede a V in `pz2` definirebbe l'asse per costruzione e distribuirebbe il contatto
 - [2026-10-16] **I due coprivite sono fuori posizione:** stanno a X 42÷49, a 13,5 mm dal pezzo più vicino, dove non c'è nient'altro, e non hanno nessuna faccia cilindrica (nessun alloggiamento per la vite). Da posizionare e finire
 - [2026-10-16] **Interasse dei morsetti: 40,000 mm**, cioè il massimo della forchetta 30÷40 che l'utente aveva indicato. Scelta giusta: la rigidezza angolare cresce con l'interasse
+- [2026-10-16] **prova_2 analizzata.** Zero interferenze fra 23 componenti. `pz1` allungato di 6,000 mm sul lato basso: la corsa sulla pista passa da 10,000/15,350 a **16,000 in discesa e 15,350 in salita, 31,350 totali**, ben centrata sui 10 mm di corsa utile. `pz2` alleggerito del 6,6% (da 67,54 a 63,08 cm³). Servo spostato di −6,000 in Y e +3,400 in Z. Aggiunte le due viti dei morsetti
+- [2026-10-16] **L'albero del servo è lungo Z, non lungo X.** Ø4,800 a X −37,450, Y −4,080, uscente verso il basso da Z −52,800. Quindi il pignone gira nel piano XY e la cremagliera è una stecca verticale lungo Y con i denti rivolti verso −X — coerente con la zona evidenziata dall'utente sulla faccia di `pz2` a X −16,500
+- [2026-10-16] **Il diametro del pignone lo decide una distanza sola:** dall'albero (X −37,450) alla linea primitiva della cremagliera. E siccome il pignone sta sotto Z −52,800, cioè **sotto `pz1` che finisce a Z −41,200**, il suo ingombro laterale non interferisce con il corpo del modulo: si sceglie liberamente. `z28` → cremagliera a filo della faccia (sporgenza 1,45) ma disco Ø45; `z20` → sporgenza 7,45 e Ø33, **ed è il pignone che il progetto già stampa per gli assi**; `z14` → sporgenza 11,95 e Ø24. Con il gioco morto la risoluzione non è un criterio, quindi la scelta è fra sbalzo della cremagliera e ingombro del disco
+- [2026-10-16] **Le due viti dei morsetti pesano ~19 g in acciaio** (Ø5,49 × 36,9), cioè **circa un terzo della massa flottante**. Bilancio aggiornato: 62÷70 g = **0,61÷0,69 N**, peggiore della prova_1 nonostante `pz2` sia più leggero, perché prima le viti non erano modellate. La testa sta a X 47, cioè 28,6 mm fuori dalla faccia di `pz2`: accorciare la vite è il risparmio di massa più grosso disponibile, e toglie anche lo sbalzo
+- [2026-10-16] **I coprivite restano a X 42÷49**, ora accoppiati alla testa delle viti. L'insieme vite + coprivite sporge quindi di 28,6 mm dal fianco di `pz2`, in aria. Da chiarire se è voluto (una manopola che si raggiunge con le dita) o se vanno riavvicinati
 
 ## Storico sessioni
 
