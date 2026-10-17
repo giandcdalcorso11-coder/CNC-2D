@@ -269,8 +269,17 @@ rettilinei lo sketch &egrave; pi&ugrave; veloce e ti lascia il controllo del gio
 
 <div class="note">
 Calcolata su <code>prova_3</code>. Origine della stecca sulla <b>faccia inferiore
-di pz2, Y = &minus;30,000</b>, come hai chiesto. Centro del pignone misurato nel
-CAD a <b>X = &minus;37,500</b>, raggio primitivo 18,750.
+di pz2, Y = &minus;30,000</b>, come hai chiesto. Centro del pignone
+<b>X = &minus;37,450</b>, raggio primitivo 18,750.
+<br><br>
+<b>Correzione del 2026-10-17.</b> Questa scheda, nella sua prima versione, dava il
+centro del pignone a X = &minus;37,500 e quindi la primitiva della stecca a
+X = &minus;18,750. Erano sbagliati di 0,050: avevo preso il centro dal
+<i>bounding box</i> del pignone, che per una dentatura non allineata agli assi non
+&egrave; simmetrico. Il centro vero, letto dai cilindri di testa (R 20,250) e di
+fondo (R 16,875), &egrave; <b>X = &minus;37,450</b>. In <code>prova_4</code> la
+stecca &egrave; a X = &minus;18,700, cio&egrave; <b>giusta</b>: l'interasse misurato
+&egrave; esattamente 18,750. Non toccare la posizione.
 </div>
 
 <figure>
@@ -302,12 +311,12 @@ CAD a <b>X = &minus;37,500</b>, raggio primitivo 18,750.
   </g>
   <!-- linea primitiva -->
   <line x1="452" y1="36" x2="452" y2="484" stroke="#c2410c" stroke-width="1.6" stroke-dasharray="14 5 3 5"/>
-  <text x="300" y="500" font-size="12" fill="#c2410c">linea primitiva a X = −18,750</text>
+  <text x="300" y="500" font-size="12" fill="#c2410c">linea primitiva a X = −18,700</text>
   <!-- pignone -->
   <circle cx="302" cy="250" r="150" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
   <circle cx="302" cy="250" r="6" fill="currentColor"/>
   <text x="180" y="250" font-size="12" fill="currentColor" text-anchor="middle">pignone z25</text>
-  <text x="180" y="266" font-size="12" fill="currentColor" text-anchor="middle">X −37,500</text>
+  <text x="180" y="266" font-size="12" fill="currentColor" text-anchor="middle">X −37,450</text>
   <!-- origine -->
   <line x1="430" y1="440" x2="640" y2="440" stroke="currentColor" stroke-width="1.4" stroke-dasharray="6 4"/>
   <text x="648" y="444" font-size="12" fill="currentColor">Y = −30,000</text>
@@ -336,13 +345,13 @@ CAD a <b>X = &minus;37,500</b>, raggio primitivo 18,750.
 <h3>Posizione</h3>
 <table>
 <tr><th>Cosa</th><th>Valore</th></tr>
-<tr><td>Linea primitiva della stecca</td><td class="k">X = &minus;18,750</td></tr>
-<tr><td>Linea di fondo (root)</td><td class="n">X = &minus;16,875 &nbsp;&mdash;&nbsp; 0,375 fuori dalla parete a &minus;16,500</td></tr>
-<tr><td>Cresta dei denti</td><td class="n">X = &minus;20,250</td></tr>
+<tr><td>Linea primitiva della stecca</td><td class="k">X = &minus;18,700</td></tr>
+<tr><td>Linea di fondo (root)</td><td class="n">X = &minus;16,825 &nbsp;&mdash;&nbsp; 0,325 fuori dalla parete a &minus;16,500</td></tr>
+<tr><td>Cresta dei denti</td><td class="n">X = &minus;20,200</td></tr>
 <tr><td>Origine della stecca</td><td class="k">Y = &minus;30,000 (faccia inferiore di pz2)</td></tr>
-<tr><td>Numero di denti</td><td class="k">9</td></tr>
+<tr><td>Numero di denti</td><td class="k">9 minimo &nbsp;&mdash;&nbsp; in <code>prova_4</code> sono 10</td></tr>
 <tr><td>Lunghezza dentata</td><td class="n">42,412</td></tr>
-<tr><td>Larghezza (in Z)</td><td class="k">6,000</td></tr>
+<tr><td>Larghezza (in Z)</td><td class="k">6,000 minima &nbsp;&mdash;&nbsp; in <code>prova_4</code> &egrave; 14,000</td></tr>
 </table>
 
 <h3>Profilo, con l'offset di gioco gi&agrave; dentro</h3>
@@ -484,6 +493,98 @@ torrette stampate. Meglio della colla: positivo, e smontabile.</li>
 dei denti lo disegna il movimento XY della testa, che è il più preciso, invece
 degli strati.</li>
 </ul>
+
+<h2>6. Verifica su prova_4: una sola quota da cambiare</h2>
+
+<div class="note">
+La stecca di <code>prova_4</code> &egrave; <b>geometricamente esatta</b>: passo,
+profondit&agrave;, angolo dei fianchi e interasse coincidono col nominale fino al
+millesimo. Manca <b>solo l'offset di gioco</b>: il profilo &egrave; quello a gioco
+zero, non quello della sezione 2.
+</div>
+
+<h3>Cosa &egrave; stato misurato</h3>
+<table>
+<tr><th>Grandezza</th><th>In prova_4</th><th>Atteso</th><th></th></tr>
+<tr><td>Passo fra le creste</td><td class="n">4,712</td><td class="n">4,71239</td><td>esatto</td></tr>
+<tr><td>Profondit&agrave; totale (cresta &rarr; fondo)</td><td class="n">3,375</td><td class="n">3,37500</td><td>esatta</td></tr>
+<tr><td>Inclinazione dei fianchi</td><td class="n">20,00&deg;</td><td class="n">20&deg;</td><td>esatta</td></tr>
+<tr><td>Linea primitiva della stecca</td><td class="n">X = &minus;18,700</td><td class="n">&minus;18,700</td><td>esatta</td></tr>
+<tr><td>Interasse col pignone</td><td class="n">18,750</td><td class="n">18,750</td><td>esatto</td></tr>
+<tr><td>Numero di denti</td><td class="n">10</td><td class="n">&ge; 9</td><td>con margine</td></tr>
+<tr><td>Larghezza in Z</td><td class="n">14,000</td><td class="n">&ge; 6</td><td>abbondante</td></tr>
+<tr><td><b>Larghezza alla cresta</b></td><td class="n">1,264</td><td class="n">0,964</td><td><b>da correggere</b></td></tr>
+<tr><td><b>Vano al fondo</b></td><td class="n">0,991</td><td class="n">1,291</td><td><b>da correggere</b></td></tr>
+</table>
+
+<h3>Il gioco, misurato</h3>
+<p>Ho traslato la stecca lungo Y a pignone fermo, a passi di 0,025 mm, cercando le
+posizioni in cui i due solidi non si compenetrano. Se il gioco esiste, la finestra
+libera &egrave; larga quanto il gioco. Il risultato:</p>
+
+<table>
+<tr><th>Traslazione in Y</th><th>Compenetrazione</th></tr>
+<tr><td class="n">+0,450</td><td class="n">0,791 mm&sup3;</td></tr>
+<tr><td class="n">+0,475</td><td class="n">0,286 mm&sup3;</td></tr>
+<tr><td class="n">+0,500</td><td class="n"><b>0,000 mm&sup3;</b></td></tr>
+<tr><td class="n">+0,525</td><td class="n">0,302 mm&sup3;</td></tr>
+<tr><td class="n">+0,550</td><td class="n">0,814 mm&sup3;</td></tr>
+</table>
+
+<p><strong>Finestra libera larga 0,000 mm: gioco zero.</strong> Un solo punto, non un
+intervallo. La curva &egrave; anche perfettamente simmetrica attorno a quel punto
+(0,286 da una parte, 0,302 dall'altra), che &egrave; la prova che i due profili sono
+coniugati esatti: il disegno &egrave; giusto, &egrave; solo troppo pieno.</p>
+
+<p>Perch&eacute; questo conta pi&ugrave; qui che sugli assi X e Y: l&agrave; il NEMA 17
+spinge la cremagliera con circa 20 N e un impuntamento lo vince per forza bruta. Qui
+la coppia del servo (177 N&middot;mm su raggio 18,750) d&agrave; 9,4 N, ma a differenza
+degli assi la stecca deve anche <b>fermarsi a una quota precisa</b>: un dente che
+forza non si limita a frenare, sposta la punta della penna rispetto al comando.
+E con uno stack di tolleranze di &plusmn;0,3 mm, un profilo a gioco zero nominale
+finisce met&agrave; delle volte in interferenza vera.</p>
+
+<h3>Le due quote da cambiare nello sketch</h3>
+<table>
+<tr><th>Quota</th><th>Da</th><th>A</th></tr>
+<tr><td>Pianetto sulla cresta del dente</td><td class="n">1,26424</td><td class="k">0,96424</td></tr>
+<tr><td>Pianetto in fondo al vano</td><td class="n">0,99131</td><td class="k">1,29131</td></tr>
+</table>
+
+<p>Nient'altro. Primitiva, cresta e fondo restano a X = &minus;18,700 / &minus;20,200 /
+&minus;16,825, il passo resta 4,71239, le mezzerie dei denti non si spostano, il
+raccordo resta 0,40. I fianchi restano a 20&deg;: se lo sketch li ha vincolati cos&igrave;,
+basta cambiare il pianetto di cresta e il resto si aggiorna da solo &mdash; il vano
+al fondo diventa 1,291 per costruzione.</p>
+
+<p>Se invece lo sketch non &egrave; parametrizzato in quel modo, l'alternativa
+&egrave; allontanare <i>tutta</i> la stecca dal pignone di <b>0,412 mm</b>
+(primitiva a X = &minus;18,288): per un interasse, un errore &Delta;a cambia il gioco
+di 2&middot;&Delta;a&middot;tan20&deg; = 0,728&middot;&Delta;a, e 0,30 / 0,728 = 0,412.
+&Egrave; una quota sola invece di due, ma il contatto si sposta verso le creste e il
+rapporto di condotta cala: &egrave; la seconda scelta, non la prima.</p>
+
+<h3>Mezzerie dei denti come sono in prova_4</h3>
+<table>
+<tr><th>Dente</th><th>Y della mezzeria</th><th>Dente</th><th>Y della mezzeria</th></tr>
+<tr><td class="n">1</td><td class="n">&minus;28,140</td><td class="n">6</td><td class="n">&minus;4,578</td></tr>
+<tr><td class="n">2</td><td class="n">&minus;23,427</td><td class="n">7</td><td class="n">+0,135</td></tr>
+<tr><td class="n">3</td><td class="n">&minus;18,715</td><td class="n">8</td><td class="n">+4,847</td></tr>
+<tr><td class="n">4</td><td class="n">&minus;14,002</td><td class="n">9</td><td class="n">+9,560</td></tr>
+<tr><td class="n">5</td><td class="n">&minus;9,290</td><td class="n">10</td><td class="n">+14,272</td></tr>
+</table>
+
+<p>La dentatura va da Y = &minus;30,000 a Y = +16,133. Il campo in cui il pignone
+ingrana lungo tutta la corsa della guida va da &minus;24,140 a +11,634, quindi avanzano
+<b>5,860 mm sotto (1,24 denti)</b> e <b>4,499 mm sopra (0,95 denti)</b>. Il margine
+c'&egrave; da entrambe le parti: 10 denti vanno bene cos&igrave;.</p>
+
+<h3>Una nota sulla larghezza</h3>
+<p>La stecca &egrave; larga 14,000 contro i 10,009 del pignone, e non &egrave; centrata:
+sporge <b>3,796 sotto</b> il pignone e <b>0,196 sopra</b>. Non &egrave; un problema, ma
+l'asimmetria dice in che verso sbagliare: se in montaggio il pignone deve spostarsi
+assialmente, <b>verso il basso</b> ha 3,8 mm di margine, verso l'alto due decimi. Vale
+anche per lo spessore del braccetto dentro la tasca dell'ingranaggio.</p>
 
 </div>
 </body>

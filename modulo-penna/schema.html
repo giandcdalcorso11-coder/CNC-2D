@@ -39,6 +39,28 @@
 <h1>Modulo Tratto Pen — schema di principio</h1>
 <p class="sub">GDC CNC 2D · Step 6 · rev. 2 — scorrimento su cuscinetti MR63</p>
 
+<div class="note" style="border:2px solid var(--accent)">
+<b>Questo schema non &egrave; quello che il CAD ha costruito.</b> Letto il
+2026-10-17 su <code>prova_4</code>: il modulo ha <b>un solo stadio mobile</b>
+(<code>pz2</code>, 12 cuscinetti) che porta sia la cremagliera sia i morsetti
+della penna. Il giunto a gioco morto da 6 mm delle sezioni 1 e 2 non c'&egrave;:
+la quota della punta &egrave; l'angolo del servo, in presa rigida nei due versi
+&mdash; cio&egrave; la strada che l'utente aveva chiesto il 2026-10-15.
+<br><br>
+Resta valido tutto il resto: le sezioni 3 (perch&eacute; i cuscinetti cambiano il
+progetto), 5 (l'amplificazione del gioco alla punta) e 6 (precarico e verso degli
+strati) descrivono il modulo costruito.
+<br><br>
+<b>Quello che ha preso il posto del gioco morto</b>, senza che fosse progettato:
+i <b>0,30 mm di gioco d'ingranamento</b> della coppia cremagliera/pignone. Dentro
+quei 0,30 mm <code>pz2</code> si muove senza che il pignone giri, quindi la penna
+appoggia col proprio peso e non con la quota imposta. &Egrave; una banda morta
+venti volte pi&ugrave; piccola di quella progettata, ma &egrave; la ragione per cui
+l'angolo di appoggio &egrave; tarabile. Due conseguenze pratiche: la taratura di
+<i>penna abbassata</i> deve cadere <b>dentro</b> quella banda, e il gioco della
+cremagliera <b>non va ridotto</b> cercando precisione.
+</div>
+
 <div class="note">
 Schema <b>cinematico</b>, non di fabbricazione: le quote derivano dai conti e
 sono vincolanti, l'impacchettamento dentro l'inviluppo del carrello è lavoro di
